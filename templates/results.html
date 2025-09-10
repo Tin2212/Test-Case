@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>匯入結果</title>
+    <style>
+        body { font-family: sans-serif; max-width: 1200px; margin: 40px auto; }
+        h1, h2 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #f2f2f2; }
+        /* 讓長內容可以自動換行 */
+        td { white-space: pre-wrap; word-break: break-word; }
+        a { color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <h1>檔案 "{{ filename }}" 的匯入與分類結果</h1>
+    <a href="/">&laquo; 返回上傳頁面</a>
+
+    {% if categorized_data %}
+        {% for category, cases in categorized_data.items() %}
+            <h2>功能分類：{{ category }} (共 {{ cases|length }} 筆)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        {% for key in cases[0].keys() %}
+                            <th>{{ key }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in cases %}
+                        <tr>
+                            {% for value in case.values() %}
+                                <td>{{ value }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    {% else %}
+        <p>無法讀取或分析檔案內容，請確認檔案格式是否正確。</p>
+    {% endif %}
+</body>
+</html>

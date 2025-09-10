@@ -1,0 +1,7 @@
+<div hx-get="{{ url_for('edit_actual_result', id=case.id) }}" 
+     hx-trigger="click" 
+     hx-target="this" 
+     hx-swap="outerHTML" 
+     style="cursor: pointer; min-height: 50px; white-space: pre-wrap;">
+    {{ case.actual_result or '點此編輯...' }}
+</div>

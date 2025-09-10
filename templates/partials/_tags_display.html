@@ -1,0 +1,16 @@
+<div id="tags-{{ case.id }}" class="mt-2 d-flex flex-wrap gap-1">
+    {% if case.tags %}
+        {% for tag in case.tags.split(',') %}
+            {% if tag.strip() %}
+                <span class="badge bg-secondary tag-removable"
+                      hx-post="{{ url_for('delete_tag', id=case.id) }}"
+                      hx-vals='{"tag": "{{ tag.strip() }}"}'
+                      hx-target="#tags-{{ case.id }}"
+                      hx-swap="outerHTML"
+                      title="點擊以移除此標籤">
+                    {{ tag.strip() }}
+                </span>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</div>

@@ -1,0 +1,2 @@
+{% set status_color = {'通過':'success', '失敗':'danger', '阻塞':'warning'}.get(case.status, 'secondary') %}
+<span class="badge bg-{{ status_color }}">{{ case.status }}</span>

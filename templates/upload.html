@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>從 Excel 檔案匯入案例</h2>
+    <p>您可以一次選擇多個 .xlsx 檔案進行匯入。<br>系統會自動將資料匯入資料庫，並略過資料庫中已存在的 Case ID。</p>
+    <form method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="files" class="form-label">選擇 .xlsx 檔案</label>
+            <input class="form-control" type="file" id="files" name="files" accept=".xlsx" required multiple>
+        </div>
+        <button type="submit" class="btn btn-success">上傳並匯入</button>
+    </form>
+{% endblock %}

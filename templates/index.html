@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>測試案例匯入系統</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        h1 { color: #333; }
+        input[type="file"] { margin-top: 10px; }
+        input[type="submit"] { margin-top: 20px; padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        input[type="submit"]:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>上傳測試案例 Excel 檔案</h1>
+    <p>請選擇一個已將測試案例按功能分類至不同工作表 (Sheet) 的 .xlsx 檔案。</p>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".xlsx" required>
+        <br>
+        <input type="submit" value="上傳並分析">
+    </form>
+</body>
+</html>

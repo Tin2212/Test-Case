@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block page_title %}
+    測試案例列表
+{% endblock %}
+
+{% block sidebar %}
+    <nav class="tree-nav">
+        <ul>
+            <li>
+                <a href="{{ url_for('index') }}" class="{{ 'active-filter' if not selected_product }}">
+                    <i class="bi bi-folder-fill me-2"></i>所有產品
+                </a>
+            </li>
+            {% for product, main_categories in tree_data.items()|sort %}
+                <li class="parent {% if product == selected_product %}active{% endif %}">
+                    <a href="{{ url_for('index', product=product) }}">
+                        {{ product }}
+                    </a>
+                    <ul class="sub-menu">
+                        {% for main_group, sub_groups in main_categories.items()|sort %}
+                             <li class="parent {% if main_group == selected_main_category %}active{% endif %}">
+                                <a href="{{ url_for('index', product=product, main_category=main_group) }}">
+                                    {{ main_group }}
+                                </a>
+                                <ul class="sub-menu">
+                                    {% for sub in sub_groups|sort %}
+                                        <li>
+                                            <a href="{{ url_for('index', product=product, main_category=main_group, sub_category=sub) }}"
+                                               class="{{ 'active-filter' if sub == selected_sub_category }}">
+                                                {{ sub }}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+        </ul>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <h4 class="mb-3">
+        {% if selected_sub_category %}
+            {{ selected_product }} / {{ selected_main_category }} / {{ selected_sub_category }}
+        {% elif selected_main_category %}
+            {{ selected_product }} / {{ selected_main_category }}
+        {% elif selected_product %}
+            {{ selected_product }}
+        {% else %}
+            所有測試案例
+        {% endif %}
+        <span class="badge bg-light text-dark ms-2">{{ cases|length }} 筆</span>
+    </h4>
+    
+    <form id="bulk-action-form" action="{{ url_for('bulk_add_tag') }}" method="POST">
+        <div class="card mb-3">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="input-group" style="max-width: 400px;">
+                    <span class="input-group-text">標籤</span>
+                    <input type="text" name="new_tag" class="form-control" required>
+                    <button type="submit" class="btn btn-primary">為選取項目套用</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered caption-top table-fixed-layout">
+                <caption>點擊任一案例列即可展開詳情。</caption>
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 3%;"><input class="form-check-input" type="checkbox" id="select-all-checkbox"></th>
+                        <th style="width: 12%;">Case ID / 標籤</th>
+                        <th style="width: 25%;">測試項目</th>
+                        <th style="width: 45%;">狀態 / 實際結果</th>
+                        <th style="width: 15%;">操作</th>
+                    </tr>
+                </thead>
+                {% for case in cases %}
+                    <tbody class="case-group">
+                        <tr class="expandable-row" data-bs-target="#collapse-{{ case.id }}" style="cursor: pointer;">
+                            <td class="text-center align-middle">
+                                <input class="form-check-input case-checkbox" type="checkbox" name="case_ids" value="{{ case.id }}">
+                            </td>
+                            <td>
+                                {{ case.case_id }}
+                                {% include 'partials/_tags_display.html' %}
+                            </td>
+                            <td>{{ case.test_item }}</td>
+                            <td>
+                                {% with case=case %}{% include 'partials/_status_result_display.html' %}{% endwith %}
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">操作</button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{{ url_for('edit_case', id=case.id) }}">完整編輯</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form action="{{ url_for('delete_case', id=case.id) }}" method="POST" onsubmit="return confirm('您確定要刪除這個案例嗎？');">
+                                                <button type="submit" class="dropdown-item text-danger">刪除</button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr id="collapse-{{ case.id }}" class="collapse">
+                            <td colspan="5" style="background-color: #f8f9fa; padding: 20px;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>測試目的:</strong>
+                                        <p style="white-space: pre-wrap;">{{ case.test_purpose }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>前置條件:</strong>
+                                        <div class="manual-list">
+                                            {% for line in (case.preconditions or "").split('\n') %}{% if line.strip() %}
+                                            <div class="manual-list-item">
+                                                <span class="manual-list-number">{{ loop.index }}.</span>
+                                                <span class="manual-list-text">{{ line.strip().lstrip('0123456789. ') }}</span>
+                                            </div>
+                                            {% endif %}{% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>測試步驟:</strong>
+                                        <div class="manual-list">
+                                            {% for line in (case.test_steps or "").split('\n') %}{% if line.strip() %}
+                                            <div class="manual-list-item">
+                                                <span class="manual-list-number">{{ loop.index }}.</span>
+                                                <span class="manual-list-text">{{ line.strip().lstrip('0123456789. ') }}</span>
+                                            </div>
+                                            {% endif %}{% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>預期結果:</strong>
+                                        <div class="manual-list">
+                                             {% for line in (case.expected_result or "").split('\n') %}{% if line.strip() %}
+                                            <div class="manual-list-item">
+                                                <span class="manual-list-number">{{ loop.index }}.</span>
+                                                <span class="manual-list-text">{{ line.strip().lstrip('0123456789. ') }}</span>
+                                            </div>
+                                            {% endif %}{% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                 <hr>
+                                <div class="row">
+                                     <div class="col-md-6">
+                                        <strong>備註:</strong>
+                                        <p style="white-space: pre-wrap;">{{ case.notes }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>參考資料:</strong>
+                                        <p style="white-space: pre-wrap;">{{ case.reference }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                {% else %}
+                <tbody>
+                    <tr>
+                        <td colspan="5" class="text-center">找不到符合篩選條件的測試案例。</td>
+                    </tr>
+                </tbody>
+                {% endfor %}
+            </table>
+        </div>
+    </form> 
+    
+    <script>
+        document.getElementById('select-all-checkbox').addEventListener('click', function(event) {
+            document.querySelectorAll('.case-checkbox').forEach(function(checkbox) {
+                checkbox.checked = event.target.checked;
+            });
+        });
+    </script>
+{% endblock %}
