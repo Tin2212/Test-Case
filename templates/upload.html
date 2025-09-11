@@ -1,13 +1,39 @@
 {% extends 'base.html' %}
 
+{# --- 核心修改點 1 --- #}
+{% set hide_sidebar = True %}
+
+{# --- 核心修改點 2 --- #}
+{% block sidebar %}
+{% endblock %}
+
+
+{% block page_title %}
+    從 Excel 匯入案例
+{% endblock %}
+
 {% block content %}
-    <h2>從 Excel 檔案匯入案例</h2>
-    <p>您可以一次選擇多個 .xlsx 檔案進行匯入。<br>系統會自動將資料匯入資料庫，並略過資料庫中已存在的 Case ID。</p>
-    <form method="post" enctype="multipart/form-data">
-        <div class="mb-3">
-            <label for="files" class="form-label">選擇 .xlsx 檔案</label>
-            <input class="form-control" type="file" id="files" name="files" accept=".xlsx" required multiple>
+    <div class="card">
+        <div class="card-header">
+            <h4>上傳 Excel 檔案</h4>
         </div>
-        <button type="submit" class="btn btn-success">上傳並匯入</button>
-    </form>
+        <div class="card-body">
+            <p class="card-text">請選擇一個或多個 Excel (.xlsx) 檔案進行上傳。系統將會讀取檔案中的所有工作表 (Sheet)，並將資料匯入為新的測試案例。如果 Case ID 已存在，將會自動跳過該筆資料。</p>
+            <form action="{{ url_for('upload_page') }}" method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="files" class="form-label">選擇檔案</label>
+                    <input class="form-control" type="file" id="files" name="files" multiple required>
+                </div>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                     <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload me-2"></i>開始上傳與匯入
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="card-footer text-muted">
+            請注意：檔案名稱若以 "gateway" 開頭，將被歸類為「郵件閘道」產品；否則將歸類為「郵件歸檔」產品。
+        </div>
+    </div>
 {% endblock %}

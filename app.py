@@ -1,4 +1,5 @@
 import os
+import json
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -39,64 +40,51 @@ class TestCase(db.Model):
     reference = db.Column(db.String(200), nullable=True)
 
 # --- 3. 輔助函式 ---
-def categorize_case(case_data):
-    """根據測試案例的內容(測試項目/步驟/原始分類)，比對手冊結構，回傳最精確的主分類和子分類。"""
-    category_str = case_data.get('category', '')
-    text_to_check = f"{case_data.get('測試項目', '')} {case_data.get('測試步驟', '')} {category_str}"
-    
-    KEYWORD_MAP = {
-        ("登入", "登出", "使用者登入與介面"): ("使用者介面", "登入與登出"),
-        ("收件匣", "寄件備份", "垃圾郵件", "郵件資料夾"): ("使用者介面", "郵件資料夾"),
-        ("搜尋郵件",): ("使用者介面", "搜尋郵件"),
-        ("偏好設定", "使用者個人介面與偏好設定"): ("使用者介面", "偏好設定"),
-        ("事件紀錄",): ("使用者介面", "事件紀錄"),
-        ("參數設定",): ("系統", "參數設定"),
-        ("紀錄檢視", "使用紀錄", "查看紀錄", "紀錄與維運"): ("系統", "紀錄檢視"),
-        ("系統資訊",): ("系統", "系統資訊"),
-        ("授權資訊",): ("系統", "授權資訊"),
-        ("系統更新",): ("系統", "系統更新"),
-        ("組態鎖定",): ("系統", "組態鎖定"),
-        ("特殊郵件", "索引錯誤", "解析錯誤"): ("系統", "特殊郵件處理"),
-        ("網域管理", "新增網域", "刪除網域", "網域與架構功能"): ("網域", "網域管理"),
-        ("別名管理", "網域別名"): ("網域", "別名管理"),
-        ("閘道架構", "中繼路由", "SMTP 認證"): ("架構", "閘道架構"),
-        ("帳號列表", "新增使用者", "帳號列表與環境"): ("帳號", "帳號列表與環境"),
-        ("帳號環境",): ("帳號", "帳號列表與環境"),
-        ("帳號原則", "密碼原則", "權限與原則"): ("帳號", "帳號原則設定"),
-        ("帳號保護", "鎖定帳號"): ("帳號", "帳號原則設定"),
-        ("帳號同步", "管理與同步"): ("帳號", "帳號同步"),
-        ("帳號認證",): ("帳號", "帳號認證"),
-        ("管理者帳號", "管理功能權限"): ("帳號", "管理者帳號"),
-        ("群組管理", "新增群組", "群組與郵件查詢"): ("群組", "群組管理"),
-        ("郵件總管",): ("郵件", "郵件總管"),
-        ("郵件查詢", "進階查詢"): ("郵件", "郵件查詢"),
-        ("暫存檔案", "審查與暫存"): ("郵件", "暫存檔案"),
-        ("郵件審查", "審查人員"): ("稽核", "審查管理"),
-        ("連線封鎖",): ("過濾", "連線封鎖"),("收件人有效性",): ("過濾", "收件人有效性"),
-        ("來源檢查", "RBL", "SPF", "DKIM", "DMARC"): ("過濾", "來源檢查"),
-        ("允許及封鎖名單",): ("過濾", "允許及封鎖名單"),("垃圾郵件特徵", "URIBL"): ("過濾", "垃圾郵件特徵"),
-        ("資料特徵",): ("過濾", "資料特徵設定"),("垃圾郵件通知",): ("過濾", "垃圾郵件通知"),
-        ("郵件防毒", "病毒郵件"): ("威脅", "郵件防毒"),("DoS 防禦",): ("威脅", "DoS 防禦"),
-        ("威脅郵件特徵", "釣魚網址", "退信攻擊"): ("威脅", "威脅郵件特徵"),("大量發信偵測",): ("威脅", "大量發信偵測"),
-        ("報表精靈", "報表紀錄", "自訂樣板", "樣板與紀錄"): ("報表", "報表精靈"),
-        ("週期設定", "儲存資源", "生命週期", "設定與紀錄"): ("封存", "週期設定"),
-        ("封存紀錄",): ("封存", "封存紀錄"),
-        ("功能組合", "交互影響", "整合與生命週期測試"): ("進階測試", "功能組合與整合"),
-        ("強健性", "安全性與邊界測試", "負向測試"): ("進階測試", "強健性與安全"),
-        ("API與相容性測試", "系統整合"): ("進階測試", "API與整合"),
-        ("系統維運", "進階參數與擴展測試"): ("進階測試", "維運與擴展"),
-    }
-    
-    for keywords, (main_cat, sub_cat) in KEYWORD_MAP.items():
-        for keyword in keywords:
-            if keyword in text_to_check:
-                return main_cat, sub_cat
-            
-    return "其他", "未分類"
 
-def allowed_file(filename):
-    """檢查副檔名是否為允許的 .xlsx"""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def load_category_rules():
+    """從 category_rules.json 檔案載入分類規則。"""
+    try:
+        # 使用 os.path.join 確保路徑在不同作業系統上都正確
+        rules_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'category_rules.json')
+        with open(rules_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # 如果檔案遺失或格式錯誤，回傳空列表以避免程式崩潰
+        print("警告：'category_rules.json' 檔案找不到或格式錯誤，將無法進行自動分類。")
+        return []
+
+# 在程式啟動時就載入規則
+CATEGORY_RULES = load_category_rules()
+
+def categorize_case(case_data, product_type):
+    """
+    根據載入的規則(CATEGORY_RULES)與指定的產品別，
+    比對測試案例的內容並回傳最精確的分類。
+    """
+    # 根據產品類型，從大的規則庫中選取對應的規則列表
+    rules_for_product = CATEGORY_RULES.get(product_type, [])
+    
+    # 如果找不到對應產品的規則，直接回傳未分類
+    if not rules_for_product:
+        return "其他", "未分類"
+
+    # 要進行比對的文字內容，現在包含更豐富的資訊
+    text_to_check = (
+        f"{case_data.get('測試項目', '')} "
+        f"{case_data.get('測試目的', '')} "
+        f"{case_data.get('測試步驟', '')} "
+        f"{case_data.get('預期結果', '')} "
+        f"{case_data.get('category', '')}"  # 保留原始分類作為參考
+    )
+    
+    # 遍歷指定產品的規則列表
+    for rule in rules_for_product:
+        for keyword in rule['keywords']:
+            if keyword in text_to_check:
+                return rule['main_category'], rule['sub_category']
+            
+    # 如果所有規則都沒匹配上，則歸為未分類
+    return "其他", "未分類"
 
 # --- 4. 路由 (Web 頁面邏輯) ---
 
@@ -107,7 +95,8 @@ def inject_status_options():
 
 @app.route('/')
 def index():
-    # (此函式內容不變)
+    page = request.args.get('page', 1, type=int)
+    
     all_cases_for_tree = db.session.query(TestCase.product_type, TestCase.main_category, TestCase.sub_category).distinct().all()
     tree_data = {}
     for prod, main_cat, sub_cat in all_cases_for_tree:
@@ -121,6 +110,14 @@ def index():
     selected_main_category = request.args.get('main_category')
     selected_sub_category = request.args.get('sub_category')
 
+    # --- 核心修改點：讀取並傳遞全域前置條件 ---
+    global_precondition = None
+    if selected_product:
+        # 從載入的 CATEGORY_RULES 中找到 global_preconditions
+        global_preconditions = CATEGORY_RULES.get('global_preconditions', {})
+        # 根據當前選擇的產品，取得對應的條件文字
+        global_precondition = global_preconditions.get(selected_product)
+
     query = TestCase.query
     if selected_product:
         query = query.filter_by(product_type=selected_product)
@@ -129,18 +126,24 @@ def index():
     if selected_sub_category:
         query = query.filter_by(sub_category=selected_sub_category)
             
-    cases_to_display = query.order_by(TestCase.case_id).all()
+    pagination = query.order_by(TestCase.case_id).paginate(page=page, per_page=50, error_out=False)
+    cases_to_display = pagination.items
     
-    return render_template('cases.html', cases=cases_to_display, tree_data=tree_data,
-                           selected_product=selected_product, selected_main_category=selected_main_category,
-                           selected_sub_category=selected_sub_category)
-
+    return render_template('cases.html', 
+                           cases=cases_to_display, 
+                           tree_data=tree_data,
+                           pagination=pagination,
+                           selected_product=selected_product, 
+                           selected_main_category=selected_main_category,
+                           selected_sub_category=selected_sub_category,
+                           global_precondition=global_precondition) # <-- 傳遞新變數到前端
 @app.route('/add', methods=['GET', 'POST'])
 def add_case():
     # (此函式內容不變)
     if request.method == 'POST':
         case_data = request.form.to_dict()
-        main_cat, sub_cat = categorize_case(case_data)
+        product_type = case_data.get('product_type', '未分類產品')
+        main_cat, sub_cat = categorize_case(case_data, product_type)
         new_case = TestCase(
             product_type=case_data.get('product_type', '未分類產品'),
             category=case_data.get('category', ''),
@@ -163,7 +166,8 @@ def edit_case(id):
     case_to_edit = TestCase.query.get_or_404(id)
     if request.method == 'POST':
         case_data = request.form.to_dict()
-        main_cat, sub_cat = categorize_case(case_data)
+        product_type = case_data.get('product_type')
+        main_cat, sub_cat = categorize_case(case_data, product_type)
         case_to_edit.product_type = case_data.get('product_type')
         case_to_edit.category = case_data.get('category')
         case_to_edit.main_category = main_cat
@@ -225,21 +229,40 @@ def delete_tag(id):
 
 @app.route('/bulk-add-tag', methods=['POST'])
 def bulk_add_tag():
-    # (此函式內容不變)
     case_ids = request.form.getlist('case_ids')
     new_tag = request.form.get('new_tag', '').strip()
+
+    # 1. 從表單中獲取當前的篩選條件
+    product = request.form.get('product')
+    main_category = request.form.get('main_category')
+    sub_category = request.form.get('sub_category')
+
+    # 2. 準備一個字典，用於建立重新導向的 URL
+    #    這裡會過濾掉值為空或 None 的參數
+    redirect_params = {
+        'product': product,
+        'main_category': main_category,
+        'sub_category': sub_category
+    }
+    cleaned_redirect_params = {k: v for k, v in redirect_params.items() if v}
+
     if not case_ids or not new_tag:
         flash('未選擇任何案例或未輸入標籤。', 'warning')
-        return redirect(url_for('index'))
+        # 3. 使用清理過的參數進行重新導向
+        return redirect(url_for('index', **cleaned_redirect_params))
+
     for case_id in case_ids:
         case = TestCase.query.get(case_id)
         if case:
             existing_tags = set(t.strip() for t in case.tags.split(',') if t.strip())
             existing_tags.add(new_tag)
             case.tags = ','.join(sorted(list(existing_tags)))
+            
     db.session.commit()
     flash(f'已為 {len(case_ids)} 個案例成功新增標籤 "{new_tag}"！', 'success')
-    return redirect(url_for('index'))
+
+    # 4. 在成功時，也使用清理過的參數進行重新導向
+    return redirect(url_for('index', **cleaned_redirect_params))
     
 @app.route('/edit-notes/<int:id>', methods=['GET', 'POST'])
 def edit_notes(id):
@@ -281,7 +304,7 @@ def upload_page():
                             if not exists:
                                 case_data_for_cat = row.to_dict()
                                 case_data_for_cat['category'] = sheet_name
-                                main_cat, sub_cat = categorize_case(case_data_for_cat)
+                                main_cat, sub_cat = categorize_case(case_data_for_cat, product_type)
                                 new_case = TestCase(
                                     product_type=product_type, category=sheet_name,
                                     main_category=main_cat, sub_category=sub_cat,

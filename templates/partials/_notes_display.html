@@ -1,0 +1,12 @@
+<div id="notes-{{ case.id }}" class="cell-edit-trigger">
+    
+    <p style="white-space: pre-wrap;">{{ case.notes or '' }}</p>
+
+    {# --- CORE FIX --- #}
+    <button hx-get="{{ url_for('edit_notes', id=case.id) }}" 
+            hx-target="#notes-wrapper-{{ case.id }}" 
+            hx-swap="innerHTML"
+            class="btn btn-outline-secondary btn-sm py-0">
+        <i class="bi bi-pencil-square"></i> 編輯
+    </button>
+</div>
