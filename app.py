@@ -1,8 +1,11 @@
 import os
 import json
 import pandas as pd
+import io
 from types import SimpleNamespace
-from flask import Flask, render_template, request, redirect, url_for, flash
+from urllib.parse import quote 
+from flask import (Flask, render_template, request, redirect, url_for, 
+                   flash, Response)
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, or_
 from flask_migrate import Migrate
@@ -450,9 +453,82 @@ def upload_page():
 
     return render_template('upload.html')
 
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/export')
+def export_cases():
+    """
+    處理測試案例的匯出請求，根據篩選條件產生 Excel 檔案。
+    """
+    # 1. 接收與主列表頁完全相同的篩選參數
+    product = request.args.get('product')
+    main_category = request.args.get('main_category')
+    sub_category = request.args.get('sub_category')
+
+    # 2. 根據參數建立資料庫查詢
+    query = TestCase.query
+    if product:
+        query = query.filter_by(product_type=product)
+    if main_category:
+        query = query.filter_by(main_category=main_category)
+    if sub_category:
+        query = query.filter_by(sub_category=sub_category)
+    
+    cases_to_export = query.order_by(TestCase.case_id).all()
+
+    if not cases_to_export:
+        flash('沒有符合目前篩選條件的資料可供匯出。', 'warning')
+        return redirect(request.referrer or url_for('index'))
+
+    # 4. 將查詢結果轉換成 Pandas DataFrame
+    data_for_df = [{
+        'Case ID': case.case_id,
+        '產品類型': case.product_type,
+        '主分類': case.main_category,
+        '子分類': case.sub_category,
+        '測試項目': case.test_item,
+        '測試目的': case.test_purpose,
+        '前置條件': case.preconditions,
+        '測試步驟': case.test_steps,
+        '預期結果': case.expected_result,
+        '實際結果': case.actual_result,
+        '狀態': case.status,
+        '標籤': ", ".join(tag.name for tag in case.tags), # 假設您已更新為多對多關係
+        '備註': case.notes
+    } for case in cases_to_export]
+    df = pd.DataFrame(data_for_df)
+
+    # 5. 在記憶體中建立一個 Excel 檔案
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='TestCases')
+        worksheet = writer.sheets['TestCases']
+        for i, col in enumerate(df.columns):
+            column_len = max(df[col].astype(str).map(len).max(), len(col)) + 2
+            worksheet.set_column(i, i, column_len)
+    output.seek(0)
+
+    # 6. 準備下載的檔名
+    filename = "test_cases_export.xlsx"
+    if sub_category:
+        filename = f"{sub_category}.xlsx"
+    elif main_category:
+        filename = f"{main_category}.xlsx"
+    elif product:
+        filename = f"{product}.xlsx"
+    
+    # 7. 將檔案作為附件回傳給使用者下載 (這一段現在有正確的縮排)
+    return Response(
+        output,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+        }
+    )
+
 
 # --- 5. 啟動程式 ---
 if __name__ == '__main__':
@@ -460,3 +536,5 @@ if __name__ == '__main__':
     # with app.app_context():
     #     db.create_all()
     app.run(debug=True, port=5001)
+
+    

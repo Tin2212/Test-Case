@@ -1,31 +1,76 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
 {% block page_title %}
-    搜尋結果：<span class="text-primary">"{{ query_term }}"</span>
+    搜尋結果
 {% endblock %}
 
-{% block title %}搜尋結果 - {{ query_term }}{% endblock %}
-
 {% block content %}
-<div class="card shadow-sm">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>共找到 {{ cases|length }} 筆符合的測試案例</span>
-        <a href="{{ url_for('index') }}" class="btn btn-sm btn-secondary">返回列表</a>
-    </div>
-    <div class="card-body">
-        {% if cases %}
-            {# 
-              為了避免重複撰寫表格的 HTML，
-              我們可以直接引用 `cases.html` 的內容來顯示搜尋結果。
-              這樣可以確保搜尋結果頁的表格樣式與主列表頁完全一致。
-            #}
-            {% include 'cases.html' %}
-        {% else %}
-            <div class="text-center p-5">
-                <p class="lead">找不到任何與 "{{ query_term }}" 相關的測試案例。</p>
-                <p class="text-muted">請嘗試使用不同的關鍵字。</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
+    {# 增加一點 CSS 樣式，讓使用者知道表格是可以點擊的 #}
+    <style>
+        .clickable-row {
+            cursor: pointer;
+        }
+        .clickable-row:hover {
+            background-color: #f8f9fa; /* 滑鼠移上去時的背景高亮顏色 */
+        }
+    </style>
+
+    {# 搜尋表單 #}
+
+
+    {# 搜尋結果顯示 #}
+    <h4 class="mb-3">
+        關於「{{ query }}」的搜尋結果
+        <span class="badge bg-light text-dark ms-2">{{ cases|length }} 筆</span>
+    </h4>
+
+    {% if cases %}
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 15%;">Case ID</th>
+                        <th style="width: 40%;">測試項目</th>
+                        <th style="width: 20%;">產品</th>
+                        <th style="width: 25%;">分類</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in cases %}
+                    {# --- 核心修改點 1 --- #}
+                    {# 移除 <a> 標籤，並在 <tr> 標籤上加入 class 和 data-href 屬性 #}
+                    <tr class="clickable-row" data-href="{{ url_for('index', product=case.product_type, main_category=case.main_category, sub_category=case.sub_category) }}">
+                        <td>{{ case.case_id }}</td>
+                        <td>{{ case.test_item }}</td>
+                        <td>{{ case.product_type }}</td>
+                        <td>{{ case.main_category }} / {{ case.sub_category }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            找不到符合條件的測試案例。
+        </div>
+    {% endif %}
+
+    {# --- 核心修改點 2 --- #}
+    {# 加入 JavaScript 來處理點擊事件 #}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 找到所有標記為 'clickable-row' 的表格列
+        const rows = document.querySelectorAll('.clickable-row');
+        
+        // 為每一列都加上點擊事件監聽器
+        rows.forEach(row => {
+            row.addEventListener('click', () => {
+                // 當點擊發生時，讀取儲存在 data-href 屬性中的網址
+                // 並跳轉到該網址
+                window.location.href = row.dataset.href;
+            });
+        });
+    });
+    </script>
+
 {% endblock %}

@@ -11,6 +11,16 @@
     </div>
 {% endmacro %}
 
+{# --- 這是「插頭」，它會找到 base.html 中名為 extra_dropdown_items 的「插座」並填入內容 --- #}
+{% block extra_dropdown_items %}
+    <li><hr class="dropdown-divider"></li>
+    <li>
+        <a class="dropdown-item" href="{{ url_for('export_cases', product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">
+            <i class="bi bi-file-earmark-excel me-2"></i>匯出目前列表
+        </a>
+    </li>
+{% endblock %}
+
 
 {% block page_title %}
     測試案例列表
@@ -80,16 +90,15 @@
 
     <form id="bulk-action-form" action="{{ url_for('bulk_add_tag') }}" method="POST">
         
-        {# --- 核心修改點：在這裡加上一個 div 並套用 sticky-bar class --- #}
         <div class="sticky-bar">
             <div class="card">
-                <div class="card-body d-flex align-items-center gap-3">
+                <div class="card-body d-flex justify-content-between align-items-center gap-3">
                     <div class="input-group" style="max-width: 400px;">
                         <span class="input-group-text">標籤</span>
-                        <input type="text" name="new_tag" class="form-control" required placeholder="輸入新標籤...">
-                        <button type="submit" class="btn btn-primary">為選取項目套用</button>
+                        <input type="text" name="new_tag" class="form-control" required placeholder="為選取項目新增標籤...">
+                        <button type="submit" class="btn btn-primary">套用</button>
                     </div>
-                    <div class="ms-auto">
+                    <div class="d-flex align-items-center gap-2">
                         <button type="button" id="expand-all-btn" class="btn btn-outline-secondary btn-sm">
                             <i class="bi bi-arrows-expand"></i> 全部展開
                         </button>
@@ -107,7 +116,7 @@
         
         <div class="table-responsive">
             <table class="table table-hover table-bordered caption-top table-fixed-layout">
-                <caption></caption>
+                <caption>點擊任一案例列即可展開詳情。</caption>
                 <thead class="table-dark">
                     <tr>
                         <th style="width: 3%;"><input class="form-check-input" type="checkbox" id="select-all-checkbox"></th>
@@ -203,14 +212,10 @@
                 <a class="page-link" href="{{ url_for('index', page=pagination.prev_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">&laquo;</a>
             </li>
             
-            {% for page_num in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
-                {% if page_num %}
-                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                        <a class="page-link" href="{{ url_for('index', page=page_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">{{ page_num }}</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                {% endif %}
+            {% for page_num in range(1, pagination.pages + 1) %}
+                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('index', page=page_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">{{ page_num }}</a>
+                </li>
             {% endfor %}
 
             <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
