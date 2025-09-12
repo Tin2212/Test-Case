@@ -12,7 +12,6 @@ MarkupSafe==3.0.2
 numpy==2.3.2
 openpyxl==3.1.5
 packaging==25.0
-panadas==0.2
 pandas==2.3.2
 python-dateutil==2.9.0.post0
 pytz==2025.2

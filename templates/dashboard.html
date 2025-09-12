@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block page_title %}儀表板{% endblock %}
+{% block sidebar %}{% endblock %}
+{% block title %}儀表板 - 測試案例總覽{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4">儀表板</h1>
+    <p class="text-muted">測試案例總體狀況一覽</p>
+
+    <hr>
+
+    <div class="row">
+        <div class="col-lg-6 col-md-12 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie me-1"></i>
+                    測試案例狀態分佈
+                </div>
+                <div class="card-body d-flex justify-content-center align-items-center">
+                    <div style="position: relative; height:300px; width:100%; max-width:300px;">
+                        <canvas id="statusPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-md-12 mb-4">
+            <div class="card shadow-sm h-100">
+                 <div class="card-header">
+                    <i class="fas fa-info-circle me-1"></i>
+                    數據總覽
+                </div>
+                <div class="card-body">
+                    <h4 class="card-title">總案例數：{{ summary_data.total_cases | default(0) }}</h4>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            已執行案例
+                            <span class="badge bg-primary rounded-pill fs-6">{{ summary_data.completed_cases | default(0) }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            通過案例
+                            <span class="badge bg-success rounded-pill fs-6">{{ summary_data.passed_cases | default(0) }}</span>
+                        </li>
+                         <li class="list-group-item d-flex justify-content-between align-items-center">
+                            執行率
+                            {% set total = summary_data.total_cases | default(0) %}
+                            {% set completed = summary_data.completed_cases | default(0) %}
+                            {% set completion_rate = (completed / total * 100) if total > 0 else 0 %}
+                            <span class="fw-bold">{{ "%.1f"|format(completion_rate) }}%</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            總體通過率
+                            {% set passed = summary_data.passed_cases | default(0) %}
+                            {% set pass_rate = (passed / total * 100) if total > 0 else 0 %}
+                            <span class="fw-bold text-success">{{ "%.1f"|format(pass_rate) }}%</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <i class="fas fa-tasks me-1"></i>
+        各主要分類測試進度
+    </div>
+    <div class="card-body">
+        {% if progress_data %}
+            {% for item in progress_data %}
+                {% set pass_perc = item.get('pass_percentage', 0) %}
+                {% set completion_perc = item.get('completion_percentage', 0) %}
+                {% set failed_perc = completion_perc - pass_perc %}
+
+                <div class="mb-3">
+                    <h6>{{ item.get('category', '未分類') }} <small class="text-muted">({{ item.get('completed', 0) }}/{{ item.get('total', 0) }})</small></h6>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-success progress-bar-dynamic" role="progressbar" 
+                             data-perc="{{ pass_perc if pass_perc > 0 else 0 }}"
+                             aria-valuenow="{{ pass_perc if pass_perc > 0 else 0 }}" aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                        <div class="progress-bar bg-danger progress-bar-dynamic" role="progressbar" 
+                             data-perc="{{ failed_perc if failed_perc > 0 else 0 }}"
+                             aria-valuenow="{{ failed_perc if failed_perc > 0 else 0 }}" aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-center text-muted">尚無分類數據可顯示。</p>
+        {% endif %}
+    </div>
+    <div class="card-footer small text-muted">
+        <span class="badge bg-success">綠色</span> 代表通過率，<span class="badge bg-danger">紅色</span> 代表失敗率。長條總長度為執行率。
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Chart.js initialization
+    try {
+        const pieChartData = JSON.parse('{{ pie_chart_data | safe }}');
+        const ctx = document.getElementById('statusPieChart');
+        
+        if (pieChartData && ctx) {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: pieChartData.labels,
+                    datasets: [{
+                        label: '案例數量',
+                        data: pieChartData.data,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(75, 192, 192, 0.7)',
+                            'rgba(255, 206, 86, 0.7)',
+                            'rgba(201, 203, 207, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(201, 203, 207, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    }
+                }
+            });
+        }
+    } catch (e) {
+        console.error("圖表初始化失敗:", e);
+    }
+
+    // Dynamic progress bar initialization
+    const progressBars = document.querySelectorAll('.progress-bar-dynamic');
+    progressBars.forEach(function(bar) {
+        const percentage = bar.getAttribute('data-perc');
+        if (percentage) {
+            bar.style.width = percentage + '%';
+            
+            const percentageFloat = parseFloat(percentage);
+            if (percentageFloat > 10) {
+                 bar.textContent = percentageFloat.toFixed(1) + '%';
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

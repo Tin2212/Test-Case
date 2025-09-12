@@ -1,12 +1,8 @@
 {% extends 'base.html' %}
 
-{# --- 核心修改點 1 --- #}
-{# 設定一個變數，告訴 base.html 這個頁面要隱藏側邊欄的標題 #}
-{% set hide_sidebar = True %}
-
-{# --- 核心修改點 2 --- #}
-{# 覆寫 sidebar block，但讓它保持空白，這樣樹狀圖就不會被渲染出來 #}
+{# 這個頁面不需要側邊欄，所以我們覆寫它並留空 #}
 {% block sidebar %}
+    {% set hide_sidebar = True %}
 {% endblock %}
 
 
@@ -15,75 +11,84 @@
 {% endblock %}
 
 {% block content %}
-    <form method="POST" class="needs-validation" novalidate>
-        {# ... 您原有的表單內容維持不變 ... #}
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label for="product_type" class="form-label">產品類型</label>
-                <select class="form-select" id="product_type" name="product_type" required>
-                    <option value="郵件閘道" {% if case and case.product_type == '郵件閘道' %}selected{% endif %}>郵件閘道</option>
-                    <option value="郵件歸檔" {% if case and case.product_type == '郵件歸檔' %}selected{% endif %}>郵件歸檔</option>
-                </select>
+<div class="card">
+    <div class="card-header">
+        <h4>{{ title }}</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="product_type" class="form-label">產品類型</label>
+                    <select class="form-select" id="product_type" name="product_type" required>
+                        <option value="郵件閘道" {% if case and case.product_type == '郵件閘道' %}selected{% endif %}>郵件閘道</option>
+                        <option value="郵件歸檔" {% if case and case.product_type == '郵件歸檔' %}selected{% endif %}>郵件歸檔</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="category" class="form-label">原始分類</label>
+                    <input type="text" class="form-control" id="category" name="category" value="{{ case.category or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="case_id" class="form-label">Case ID</label>
+                    <input type="text" class="form-control" id="case_id" name="case_id" value="{{ case.case_id or '' }}" required>
+                </div>
+                <div class="col-12">
+                    <label for="test_item" class="form-label">測試項目</label>
+                    <input type="text" class="form-control" id="test_item" name="test_item" value="{{ case.test_item or '' }}" required>
+                </div>
+                <div class="col-12">
+                    <label for="test_purpose" class="form-label">測試目的</label>
+                    <textarea class="form-control" id="test_purpose" name="test_purpose" rows="3">{{ case.test_purpose or '' }}</textarea>
+                </div>
+                <div class="col-12">
+                    <label for="preconditions" class="form-label">前置條件</label>
+                    <textarea class="form-control" id="preconditions" name="preconditions" rows="3">{{ case.preconditions or '' }}</textarea>
+                </div>
+                <div class="col-12">
+                    <label for="test_steps" class="form-label">測試步驟</label>
+                    <textarea class="form-control" id="test_steps" name="test_steps" rows="6">{{ case.test_steps or '' }}</textarea>
+                </div>
+                <div class="col-12">
+                    <label for="expected_result" class="form-label">預期結果</label>
+                    <textarea class="form-control" id="expected_result" name="expected_result" rows="6">{{ case.expected_result or '' }}</textarea>
+                </div>
+                <div class="col-md-6">
+                    <label for="status" class="form-label">狀態</label>
+                    <select class="form-select" id="status" name="status" required>
+                        {% for status_option in status_options %}
+                            <option value="{{ status_option }}" {% if case and case.status == status_option %}selected{% endif %}>
+                                {{ status_option }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="tags" class="form-label">標籤 (以逗號分隔)</label>
+                    {# --- 核心修正點 --- #}
+                    {# 根據您的 app.py，tags 欄位是一個純文字 (Text)，所以直接顯示即可 #}
+                    {# 原本的 | map(attribute='name') | join(', ') 會導致錯誤 #}
+                    <input type="text" class="form-control" id="tags" name="tags" value="{{ case.tags or '' }}">
+                </div>
+                <div class="col-12">
+                    <label for="actual_result" class="form-label">實際結果</label>
+                    <textarea class="form-control" id="actual_result" name="actual_result" rows="4">{{ case.actual_result or '' }}</textarea>
+                </div>
+                <div class="col-12">
+                    <label for="notes" class="form-label">備註</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="4">{{ case.notes or '' }}</textarea>
+                </div>
+                <div class="col-12">
+                    <label for="reference" class="form-label">參考資料</label>
+                    <input type="text" class="form-control" id="reference" name="reference" value="{{ case.reference or '' }}">
+                </div>
             </div>
-            <div class="col-md-4">
-                <label for="category" class="form-label">原始分類</label>
-                <input type="text" class="form-control" id="category" name="category" value="{{ case.category or '' }}">
+            <hr class="my-4">
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
+                <button class="btn btn-primary" type="submit">儲存案例</button>
             </div>
-            <div class="col-md-4">
-                <label for="case_id" class="form-label">Case ID</label>
-                <input type="text" class="form-control" id="case_id" name="case_id" value="{{ case.case_id or '' }}" required>
-            </div>
-            <div class="col-12">
-                <label for="test_item" class="form-label">測試項目</label>
-                <input type="text" class="form-control" id="test_item" name="test_item" value="{{ case.test_item or '' }}" required>
-            </div>
-            <div class="col-12">
-                <label for="test_purpose" class="form-label">測試目的</label>
-                <textarea class="form-control" id="test_purpose" name="test_purpose" rows="3">{{ case.test_purpose or '' }}</textarea>
-            </div>
-            <div class="col-12">
-                <label for="preconditions" class="form-label">前置條件</label>
-                <textarea class="form-control" id="preconditions" name="preconditions" rows="3">{{ case.preconditions or '' }}</textarea>
-            </div>
-            <div class="col-12">
-                <label for="test_steps" class="form-label">測試步驟</label>
-                <textarea class="form-control" id="test_steps" name="test_steps" rows="6">{{ case.test_steps or '' }}</textarea>
-            </div>
-            <div class="col-12">
-                <label for="expected_result" class="form-label">預期結果</label>
-                <textarea class="form-control" id="expected_result" name="expected_result" rows="6">{{ case.expected_result or '' }}</textarea>
-            </div>
-            <div class="col-md-6">
-                <label for="status" class="form-label">狀態</label>
-                <select class="form-select" id="status" name="status" required>
-                    {% for status_option in status_options %}
-                        <option value="{{ status_option }}" {% if case and case.status == status_option %}selected{% endif %}>
-                            {{ status_option }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label for="tags" class="form-label">標籤 (以逗號分隔)</label>
-                <input type="text" class="form-control" id="tags" name="tags" value="{{ case.tags or '' }}">
-            </div>
-             <div class="col-12">
-                <label for="actual_result" class="form-label">實際結果</label>
-                <textarea class="form-control" id="actual_result" name="actual_result" rows="4">{{ case.actual_result or '' }}</textarea>
-            </div>
-            <div class="col-12">
-                <label for="notes" class="form-label">備註</label>
-                <textarea class="form-control" id="notes" name="notes" rows="4">{{ case.notes or '' }}</textarea>
-            </div>
-            <div class="col-12">
-                <label for="reference" class="form-label">參考資料</label>
-                <input type="text" class="form-control" id="reference" name="reference" value="{{ case.reference or '' }}">
-            </div>
-        </div>
-        <hr class="my-4">
-        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-            <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
-            <button class="btn btn-primary" type="submit">儲存案例</button>
-        </div>
-    </form>
+        </form>
+    </div>
+</div>
 {% endblock %}

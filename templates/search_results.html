@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+    搜尋結果：<span class="text-primary">"{{ query_term }}"</span>
+{% endblock %}
+
+{% block title %}搜尋結果 - {{ query_term }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>共找到 {{ cases|length }} 筆符合的測試案例</span>
+        <a href="{{ url_for('index') }}" class="btn btn-sm btn-secondary">返回列表</a>
+    </div>
+    <div class="card-body">
+        {% if cases %}
+            {# 
+              為了避免重複撰寫表格的 HTML，
+              我們可以直接引用 `cases.html` 的內容來顯示搜尋結果。
+              這樣可以確保搜尋結果頁的表格樣式與主列表頁完全一致。
+            #}
+            {% include 'cases.html' %}
+        {% else %}
+            <div class="text-center p-5">
+                <p class="lead">找不到任何與 "{{ query_term }}" 相關的測試案例。</p>
+                <p class="text-muted">請嘗試使用不同的關鍵字。</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -26,7 +26,7 @@ def run_fix():
             }
             
             # 使用修正後的邏輯重新獲取分類
-            new_main_cat, new_sub_cat = categorize_case(case_data)
+            new_main_cat, new_sub_cat = categorize_case(case_data, case.product_type)
             
             # 只有在分類有變動時才更新
             if case.main_category != new_main_cat or case.sub_category != new_sub_cat:

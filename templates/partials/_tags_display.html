@@ -1,16 +1,21 @@
-<div id="tags-{{ case.id }}" class="mt-2 d-flex flex-wrap gap-1">
+<div id="tags-{{ case.id }}" class="tags-container">
     {% if case.tags %}
-        {% for tag in case.tags.split(',') %}
-            {% if tag.strip() %}
-                <span class="badge bg-secondary tag-removable"
-                      hx-post="{{ url_for('delete_tag', id=case.id) }}"
-                      hx-vals='{"tag": "{{ tag.strip() }}"}'
-                      hx-target="#tags-{{ case.id }}"
-                      hx-swap="outerHTML"
-                      title="點擊以移除此標籤">
-                    {{ tag.strip() }}
-                </span>
-            {% endif %}
+        {# 
+          MODIFICATION: We no longer need to .split(',') because case.tags is now a list of Tag objects.
+          We loop through the list directly and access the tag's name with tag.name.
+        #}
+        {% for tag in case.tags %}
+            <span class="badge bg-secondary me-1">
+                {{ tag.name }}
+                <button class="btn-close btn-close-white ms-1" style="font-size: 0.6em;"
+                        hx-post="{{ url_for('delete_tag', id=case.id) }}"
+                        hx-target="#tags-{{ case.id }}"
+                        hx-swap="outerHTML"
+                        hx-vals='{"tag": "{{ tag.name }}"}'
+                        aria-label="Delete tag"></button>
+            </span>
         {% endfor %}
+    {% else %}
+        <span class="text-muted fst-italic"></span>
     {% endif %}
 </div>
