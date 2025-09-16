@@ -6,11 +6,11 @@
         </div>
         <div class="col-md-6">
             <strong>前置條件:</strong>
-            {{ render_manual_list(case.preconditions) }}
+            {{ render_manual_list(case.preconditions) | safe }}
         </div>
         <div class="col-md-6">
             <strong>測試步驟:</strong>
-            {{ render_manual_list(case.test_steps) }}
+            {{ render_manual_list(case.test_steps) | safe }}
         </div>
          <div class="col-md-6">
             <strong>預期結果:</strong>
@@ -19,16 +19,9 @@
          <div class="col-md-6">
             <strong>備註:</strong>
             <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.notes }}</p>
-        </div>
-        <div class="col-md-6">
-            <strong>參考資料:</strong>
-            <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.reference }}</p>
-        </div>
-        
-        {% if case.attachments %}
-        <div class="col-md-12">
-            <strong>附件:</strong>
-            <div class="d-flex flex-wrap align-items-start">
+            
+            {% if case.attachments %}
+            <div class="mt-2 d-flex flex-wrap align-items-start">
             {% for attachment in case.attachments %}
                 {% set filename_lower = attachment.filename.lower() %}
                 {% set is_image = filename_lower.endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')) %}
@@ -47,7 +40,11 @@
                 {% endif %}
             {% endfor %}
             </div>
+            {% endif %}
         </div>
-        {% endif %}
+        <div class="col-md-6">
+            <strong>參考資料:</strong>
+            <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.reference }}</p>
+        </div>
     </div>
 </td>

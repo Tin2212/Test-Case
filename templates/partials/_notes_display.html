@@ -1,21 +1,17 @@
 <div class="cell-edit-trigger">
-    <p class="mb-0">
+    <p class="mb-2">
         <span style="white-space: pre-wrap;">{{ case.notes or '' }}</span>
+        
+        {% if case.attachments %}
+            <i class="bi bi-paperclip ms-2" title="有附件"></i>
+        {% endif %}
     </p>
-    <button class="btn btn-outline-secondary btn-sm" 
+    
+    <button type="button" 
+            class="btn btn-outline-secondary btn-sm" 
             hx-get="{{ url_for('edit_notes', id=case.id) }}" 
             hx-target="#notes-wrapper-{{ case.id }}" 
             hx-swap="innerHTML">
-        編輯
+        <i class="bi bi-pencil-square"></i> 編輯
     </button>
 </div>
-
-{% if case.attachments %}
-<div class="mt-2">
-    {% for attachment in case.attachments %}
-    <a href="{{ url_for('download_attachment', filename=attachment.filepath) }}" class="badge text-bg-light text-decoration-none" title="{{ attachment.filename }}">
-        <i class="bi bi-paperclip"></i> {{ attachment.filename|truncate(20) }}
-    </a>
-    {% endfor %}
-</div>
-{% endif %}

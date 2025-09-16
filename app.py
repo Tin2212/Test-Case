@@ -17,13 +17,17 @@ from services import process_excel_file
 from utils import categorize_case, process_tags, load_category_rules
 
 # --- 1. 初始化與設定 ---
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 ATTACHMENT_FOLDER = os.path.join(UPLOAD_FOLDER, 'attachments') 
 ALLOWED_EXTENSIONS = {'xlsx'}
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'a_very_secure_and_random_secret_key_for_production'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///testcases.db'
+db_path = os.path.join(BASE_DIR, 'instance', 'testcases.db')
+if not os.path.exists(os.path.dirname(db_path)):
+    os.makedirs(os.path.dirname(db_path))
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['ATTACHMENT_FOLDER'] = ATTACHMENT_FOLDER 
@@ -31,14 +35,14 @@ app.config['ATTACHMENT_FOLDER'] = ATTACHMENT_FOLDER
 db.init_app(app)
 migrate.init_app(app, db)
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-if not os.path.exists(ATTACHMENT_FOLDER):
-    os.makedirs(ATTACHMENT_FOLDER)
+with app.app_context():
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+    if not os.path.exists(ATTACHMENT_FOLDER):
+        os.makedirs(ATTACHMENT_FOLDER)
 
 # --- 路由 (Web 頁面邏輯) ---
 
-# ... (context_processor, dashboard, search, index, add_case, edit_case, delete_case, status_result 相關路由保持不變) ...
 @app.context_processor
 def inject_status_options():
     status_options = ['未執行', '進行中', '通過', '失敗']
@@ -99,38 +103,6 @@ def dashboard():
         hide_sidebar=True
     )
 
-@app.route('/search')
-def search():
-    query_term = request.args.get('q', '').strip()
-    
-    if not query_term:
-        return redirect(url_for('index'))
-
-    search_filter = or_(
-        TestCase.case_id.ilike(f'%{query_term}%'),
-        TestCase.test_item.ilike(f'%{query_term}%'),
-        TestCase.test_purpose.ilike(f'%{query_term}%'),
-        TestCase.test_steps.ilike(f'%{query_term}%'),
-        TestCase.notes.ilike(f'%{query_term}%')
-    )
-
-    found_cases = TestCase.query.filter(search_filter).order_by(TestCase.case_id).all()
-
-    mock_pagination = SimpleNamespace(
-        total=len(found_cases),
-        pages=0,
-        iter_pages=lambda: []
-    )
-
-    return render_template(
-        'search_results.html', 
-        cases=found_cases, 
-        query_term=query_term,
-        hide_sidebar=True,
-        tree_data={},
-        pagination=mock_pagination
-    )
-
 @app.route('/')
 def index():
     page = request.args.get('page', 1, type=int)
@@ -140,6 +112,7 @@ def index():
     
     selected_statuses = request.args.getlist('status')
     selected_tags = request.args.getlist('tag')
+    search_term = request.args.get('search_term', '').strip()
 
     all_cases_for_tree = db.session.query(TestCase.product_type, TestCase.main_category, TestCase.sub_category).distinct().all()
     tree_data = {}
@@ -174,6 +147,18 @@ def index():
         for tag_name in selected_tags:
             query = query.filter(TestCase.tags.any(name=tag_name))
 
+    if search_term:
+        search_filter = or_(
+            TestCase.case_id.ilike(f'%{search_term}%'),
+            TestCase.test_item.ilike(f'%{search_term}%'),
+            TestCase.test_purpose.ilike(f'%{search_term}%'),
+            TestCase.preconditions.ilike(f'%{search_term}%'),
+            TestCase.test_steps.ilike(f'%{search_term}%'),
+            TestCase.expected_result.ilike(f'%{search_term}%'),
+            TestCase.notes.ilike(f'%{search_term}%')
+        )
+        query = query.filter(search_filter)
+
     pagination = query.order_by(TestCase.case_id).paginate(page=page, per_page=per_page, error_out=False)
     cases_to_display = pagination.items
     
@@ -190,7 +175,8 @@ def index():
                            per_page=per_page,
                            all_tags=all_tags,
                            selected_tags=selected_tags,
-                           selected_statuses=selected_statuses)
+                           selected_statuses=selected_statuses,
+                           search_term=search_term)
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_case():
@@ -287,18 +273,11 @@ def bulk_add_tag():
     case_ids = request.form.getlist('case_ids')
     new_tag_name = request.form.get('new_tag', '').strip().lower()
 
-    redirect_params = {
-        'product': request.form.get('product'),
-        'main_category': request.form.get('main_category'),
-        'sub_category': request.form.get('sub_category'),
-        'page': request.form.get('page', 1, type=int),
-        'per_page': request.form.get('per_page', 50, type=int)
-    }
-    cleaned_redirect_params = {k: v for k, v in redirect_params.items() if v}
-
+    redirect_params = {k: v for k, v in request.form.items() if k not in ['case_ids', 'new_tag']}
+    
     if not case_ids or not new_tag_name:
         flash('未選擇任何案例或未輸入標籤。', 'warning')
-        return redirect(url_for('index', **cleaned_redirect_params))
+        return redirect(url_for('index', **redirect_params))
 
     tag_to_add = Tag.query.filter_by(name=new_tag_name).first()
     if not tag_to_add:
@@ -312,34 +291,32 @@ def bulk_add_tag():
             
     db.session.commit()
     flash(f'已為 {len(case_ids)} 個案例成功新增標籤 "{new_tag_name}"！', 'success')
-    return redirect(url_for('index', **cleaned_redirect_params))
+    return redirect(url_for('index', **redirect_params))
 
 @app.route('/bulk-delete', methods=['POST'])
 def bulk_delete():
     case_ids = request.form.getlist('case_ids')
-    
-    redirect_params = {
-        'product': request.form.get('product'),
-        'main_category': request.form.get('main_category'),
-        'sub_category': request.form.get('sub_category'),
-        'page': request.form.get('page', 1, type=int),
-        'per_page': request.form.get('per_page', 50, type=int)
-    }
-    cleaned_redirect_params = {k: v for k, v in redirect_params.items() if v}
+    redirect_params = {k: v for k, v in request.form.items() if k != 'case_ids'}
 
     if not case_ids:
         flash('未選擇任何案例。', 'warning')
-        return redirect(url_for('index', **cleaned_redirect_params))
+        return redirect(url_for('index', **redirect_params))
 
     cases_to_delete = TestCase.query.filter(TestCase.id.in_(case_ids)).all()
     
     for case in cases_to_delete:
+        # 刪除關聯的附件檔案
+        for attachment in case.attachments:
+            try:
+                os.remove(os.path.join(app.config['ATTACHMENT_FOLDER'], attachment.filepath))
+            except OSError as e:
+                print(f"Error deleting file {attachment.filepath}: {e}")
         db.session.delete(case)
         
     db.session.commit()
     
     flash(f'已成功刪除 {len(cases_to_delete)} 個案例！', 'success')
-    return redirect(url_for('index', **cleaned_redirect_params))
+    return redirect(url_for('index', **redirect_params))
 
 @app.route('/edit-notes/<int:id>', methods=['GET', 'POST'])
 def edit_notes(id):
@@ -363,8 +340,7 @@ def edit_notes(id):
                 db.session.add(new_attachment)
 
         db.session.commit()
-        
-        # ★★★ 核心修正點 2: 回傳 display 樣板，並加上觸發器 ★★★
+        case = TestCase.query.get_or_404(id)
         response = Response(render_template('partials/_notes_display.html', case=case))
         response.headers['HX-Trigger'] = f'refreshDetails-{case.id}'
         return response
@@ -376,11 +352,11 @@ def display_notes(id):
     case = TestCase.query.get_or_404(id)
     return render_template('partials/_notes_display.html', case=case)
 
-@app.route('/attachments/view/<filename>')
+@app.route('/uploads/attachments/<path:filename>')
 def serve_attachment(filename):
     return send_from_directory(app.config['ATTACHMENT_FOLDER'], filename)
 
-@app.route('/attachments/download/<filename>')
+@app.route('/download/attachments/<path:filename>')
 def download_attachment(filename):
     return send_from_directory(app.config['ATTACHMENT_FOLDER'], filename, as_attachment=True)
 
@@ -398,31 +374,26 @@ def delete_attachment(attachment_id):
     db.session.commit()
 
     case = TestCase.query.get_or_404(case_id)
-    
-    # ★★★ 核心修正點 3: 回傳 edit 樣板，並加上觸發器 ★★★
     response = Response(render_template('partials/_notes_edit.html', case=case))
     response.headers['HX-Trigger'] = f'refreshDetails-{case.id}'
     return response
 
-# ★★★ 核心修正點 4: 新增專門用來刷新詳細內容的路由 ★★★
 @app.route('/case-details/<int:id>')
 def get_case_details(id):
     case = TestCase.query.get_or_404(id)
-    # 記得要傳遞 render_manual_list 函式給 partial
-    return render_template('partials/_case_details_content.html', case=case, render_manual_list=render_manual_list)
+    return render_template('partials/_case_details_content.html', case=case, render_manual_list=render_manual_list_in_template)
 
-# 輔助函式，讓樣板可以呼叫
+def render_manual_list_in_template(text_block):
+    lines = [line.strip().lstrip('0123456789. ') for line in (text_block or "").split('\n') if line.strip()]
+    html = '<div class="manual-list">'
+    for i, line in enumerate(lines):
+        html += f'<div class="manual-list-item"><span class="manual-list-number">{i+1}.</span><span class="manual-list-text">{line}</span></div>'
+    html += '</div>'
+    return html
+
 @app.context_processor
 def utility_processor():
-    def render_manual_list_in_template(text_block):
-        lines = [line.strip().lstrip('0123456789. ') for line in (text_block or "").split('\n') if line.strip()]
-        html = '<div class="manual-list">'
-        for i, line in enumerate(lines):
-            html += f'<div class="manual-list-item"><span class="manual-list-number">{i+1}.</span><span class="manual-list-text">{line}</span></div>'
-        html += '</div>'
-        return html
     return dict(render_manual_list=render_manual_list_in_template)
-
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_page():
@@ -468,6 +439,7 @@ def export_cases():
     
     selected_statuses = request.args.getlist('status')
     selected_tags = request.args.getlist('tag')
+    search_term = request.args.get('search_term', '').strip()
 
     query = TestCase.query
     if product:
@@ -481,6 +453,12 @@ def export_cases():
     if selected_tags:
         for tag_name in selected_tags:
             query = query.filter(TestCase.tags.any(name=tag_name))
+    if search_term:
+        search_filter = or_(
+            TestCase.case_id.ilike(f'%{search_term}%'),
+            TestCase.test_item.ilike(f'%{search_term}%')
+        )
+        query = query.filter(search_filter)
 
     cases_to_export = query.order_by(TestCase.case_id).all()
 
@@ -530,6 +508,5 @@ def export_cases():
         }
     )
 
-# --- 5. 啟動程式 ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

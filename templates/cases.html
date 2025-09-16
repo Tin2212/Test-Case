@@ -39,7 +39,7 @@
                                         <li>
                                             <a href="{{ url_for('index', product=product, main_category=main_group, sub_category=sub) }}"
                                                class="{{ 'active-filter' if product == selected_product and main_group == selected_main_category and sub == selected_sub_category }}">
-                                                {{ sub }}
+                                                 {{ sub }}
                                             </a>
                                         </li>
                                     {% endfor %}
@@ -77,67 +77,75 @@
     </div>
     {% endif %}
 
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="row g-3 align-items-center">
-                <div class="col-auto">
-                    <label class="form-label mb-0"><strong><i class="bi bi-flag-fill me-1"></i>依狀態：</strong></label>
-                </div>
-                <div class="col">
-                    <div class="btn-group btn-group-sm" role="group">
-                        {% for status in status_options %}
-                        <a href="#" class="btn btn-outline-secondary filter-btn status-filter {% if status in selected_statuses %}active{% endif %}" data-filter-type="status" data-filter-value="{{ status }}">
-                            {{ status }}
-                        </a>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="col-auto">
-                     <label for="tag-filter-select" class="form-label mb-0"><strong><i class="bi bi-tags-fill me-1"></i>依標籤：</strong></label>
-                </div>
-                <div class="col-md-4">
-                    <select id="tag-filter-select" class="form-select form-select-sm" multiple>
-                        {% for tag in all_tags %}
-                            <option value="{{ tag.name }}" {% if tag.name in selected_tags %}selected{% endif %}>{{ tag.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
     <form id="bulk-action-form" method="POST">
         
         <div class="sticky-bar">
             <div class="card">
-                <div class="card-body d-flex justify-content-between align-items-center gap-3">
-                    <div class="input-group" style="max-width: 400px;">
-                        <span class="input-group-text">標籤</span>
-                        <input type="text" name="new_tag" class="form-control" placeholder="為選取項目新增標籤...">
-                        <button type="button" id="bulk-add-tag-btn" class="btn btn-primary">套用</button>
+                <div class="card-body">
+                    <div class="row g-3 align-items-center mb-3">
+                        <div class="col-auto">
+                            <label class="form-label mb-0"><strong><i class="bi bi-flag-fill me-1"></i>狀態：</strong></label>
+                        </div>
+                        <div class="col">
+                            <div class="btn-group btn-group-sm" role="group">
+                                {% for status in status_options %}
+                                <a href="#" class="btn btn-outline-secondary filter-btn status-filter {% if status in selected_statuses %}active{% endif %}" data-filter-type="status" data-filter-value="{{ status }}">
+                                    {{ status }}
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <label for="tag-filter-select" class="form-label mb-0"><strong><i class="bi bi-tags-fill me-1"></i>標籤：</strong></label>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="tag-filter-select" class="form-select form-select-sm" multiple>
+                                {% for tag in all_tags %}
+                                    <option value="{{ tag.name }}" {% if tag.name in selected_tags %}selected{% endif %}>{{ tag.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" id="bulk-delete-btn" class="btn btn-danger">
-                            <i class="bi bi-trash-fill"></i> 批量刪除
-                        </button>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between align-items-center gap-3">
+                        <div class="input-group" style="max-width: 400px;">
+                            <span class="input-group-text">搜尋</span>
+                            <input type="search" id="search-input" name="search_term" class="form-control" placeholder="輸入關鍵字..." value="{{ search_term or '' }}">
+                            <button type="button" id="search-btn" class="btn btn-info">搜尋</button>
+                        </div>
                         
-                        <div class="input-group input-group-sm" style="width: 150px;">
-                          <label class="input-group-text" for="per-page-select">每頁顯示</label>
-                          <select class="form-select" id="per-page-select">
-                            <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
-                            <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
-                            <option value="30" {% if per_page == 30 %}selected{% endif %}>30</option>
-                            <option value="40" {% if per_page == 40 %}selected{% endif %}>40</option>
-                            <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-                          </select>
+                        <div class="input-group" style="max-width: 400px;">
+                            <span class="input-group-text">批量標籤</span>
+                            <select id="bulk-tag-select" class="form-select">
+                                <option></option>
+                                {% for tag in all_tags %}
+                                    <option value="{{ tag.name }}">{{ tag.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" id="bulk-add-tag-btn" class="btn btn-primary">套用</button>
                         </div>
 
-                        <button type="button" id="toggle-all-btn" class="btn btn-outline-secondary btn-sm" data-state="collapsed">
-                            <i class="bi bi-arrows-expand"></i> 
-                            <span>全部展開</span>
-                        </button>
-
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" id="bulk-delete-btn" class="btn btn-danger">
+                                <i class="bi bi-trash-fill"></i> 批量刪除
+                            </button>
+                            <div class="input-group input-group-sm" style="width: 150px;">
+                                <label class="input-group-text" for="per-page-select">每頁顯示</label>
+                                <select class="form-select" id="per-page-select">
+                                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                                    <option value="30" {% if per_page == 30 %}selected{% endif %}>30</option>
+                                    <option value="40" {% if per_page == 40 %}selected{% endif %}>40</option>
+                                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                                </select>
+                            </div>
+                            <button type="button" id="toggle-all-btn" class="btn btn-outline-secondary btn-sm" data-state="collapsed">
+                                <i class="bi bi-arrows-expand"></i> 
+                                <span>全部展開</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -162,9 +170,15 @@
                         <th style="width: 10%;">操作</th>
                     </tr>
                 </thead>
+                <tbody id="case-table-body">
                 {% for case in cases %}
-                    <tbody class="case-group">
-                        <tr class="expandable-row" data-bs-target="#collapse-{{ case.id }}" style="cursor: pointer;">
+                        <tr class="expandable-row" 
+                            data-bs-target="#collapse-{{ case.id }}" 
+                            style="cursor: pointer;"
+                            hx-get="{{ url_for('get_case_details', id=case.id) }}"
+                            hx-target="#details-content-{{ case.id }}"
+                            hx-swap="innerHTML"
+                            hx-trigger="click once">
                             <td class="text-center align-middle">
                                 <input class="form-check-input case-checkbox" type="checkbox" name="case_ids" value="{{ case.id }}">
                             </td>
@@ -193,7 +207,7 @@
                                             <button type="button" class="dropdown-item text-danger"
                                                     hx-post="{{ url_for('delete_case', id=case.id) }}"
                                                     hx-confirm="您確定要刪除這個案例嗎？"
-                                                    hx-target="closest .case-group"
+                                                    hx-target="closest tr"
                                                     hx-swap="outerHTML">
                                                 刪除
                                             </button>
@@ -204,74 +218,24 @@
                         </tr>
                         
                         <tr id="collapse-{{ case.id }}" class="collapse">
-                           <td colspan="6" style="background-color: #f8f9fa; padding: 20px;">
-                                <div class="row g-3">
-                                     <div class="col-md-6">
-                                        <strong>測試目的:</strong>
-                                        <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.test_purpose }}</p>
+                             <td colspan="6" id="details-content-{{ case.id }}" style="background-color: #f8f9fa; padding: 20px;"
+                                hx-get="{{ url_for('get_case_details', id=case.id) }}"
+                                hx-swap="innerHTML"
+                                hx-trigger="refreshDetails-{{ case.id }} from:body">
+                                
+                                <div class="p-3 text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
                                     </div>
-                                    <div class="col-md-6">
-                                        <strong>前置條件:</strong>
-                                        {{ render_manual_list(case.preconditions) }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <strong>測試步驟:</strong>
-                                        {{ render_manual_list(case.test_steps) }}
-                                    </div>
-                                     <div class="col-md-6">
-                                        <strong>預期結果:</strong>
-                                        <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.expected_result }}</p>
-                                    </div>
-                                     <div class="col-md-6">
-                                        <strong>備註:</strong>
-                                        <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.notes }}</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <strong>參考資料:</strong>
-                                        <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.reference }}</p>
-                                    </div>
-                                    
-                                    {% if case.attachments %}
-                                    <div class="col-md-12">
-                                        <strong>附件:</strong>
-                                        <div class="d-flex flex-wrap align-items-start">
-                                        {% for attachment in case.attachments %}
-                                            {% set extensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'] %}
-                                            {% set is_image = false %}
-                                            {% for ext in extensions %}
-                                                {% if attachment.filename.lower().endswith(ext) %}
-                                                    {% set is_image = true %}
-                                                {% endif %}
-                                            {% endfor %}
-
-                                            {% if is_image %}
-                                                <div class="me-3 mb-3 text-center" style="max-width: 300px;">
-                                                    <a href="{{ url_for('download_attachment', filename=attachment.filepath) }}" class="d-block mb-1 small" title="下載檔案">{{ attachment.filename }}</a>
-                                                    <a href="{{ url_for('serve_attachment', filename=attachment.filepath) }}" target="_blank">
-                                                        <img src="{{ url_for('serve_attachment', filename=attachment.filepath) }}" class="img-fluid rounded border" style="max-height: 200px;">
-                                                    </a>
-                                                </div>
-                                            {% else %}
-                                                <a href="{{ url_for('download_attachment', filename=attachment.filepath) }}" class="btn btn-outline-secondary btn-sm me-2 mb-2" title="{{ attachment.filename }}">
-                                                    <i class="bi bi-download me-1"></i> {{ attachment.filename|truncate(30) }}
-                                                </a>
-                                            {% endif %}
-                                        {% endfor %}
-                                        </div>
-                                    </div>
-                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
-
-                    </tbody>
                 {% else %}
-                <tbody>
                     <tr>
                         <td colspan="6" class="text-center">找不到符合篩選條件的測試案例。</td>
                     </tr>
-                </tbody>
                 {% endfor %}
+                </tbody>
             </table>
         </div>
     </form> 
@@ -280,7 +244,7 @@
     <nav aria-label="Page navigation">
         <ul class="pagination justify-content-center">
             <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('index', page=pagination.prev_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page) }}&{{ request.args.to_dict()|urlencode }}">&laquo;</a>
+                <a class="page-link" href="{{ url_for('index', page=pagination.prev_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page, status=selected_statuses, tag=selected_tags, search_term=search_term) }}">&laquo;</a>
             </li>
             
             {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
@@ -291,7 +255,7 @@
                         </li>
                     {% else %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('index', page=page_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page) }}&{{ request.args.to_dict()|urlencode }}">{{ page_num }}</a>
+                            <a class="page-link" href="{{ url_for('index', page=page_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page, status=selected_statuses, tag=selected_tags, search_term=search_term) }}">{{ page_num }}</a>
                         </li>
                     {% endif %}
                 {% else %}
@@ -300,7 +264,7 @@
             {% endfor %}
 
             <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('index', page=pagination.next_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page) }}&{{ request.args.to_dict()|urlencode }}">&raquo;</a>
+                <a class="page-link" href="{{ url_for('index', page=pagination.next_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page, status=selected_statuses, tag=selected_tags, search_term=search_term) }}">&raquo;</a>
             </li>
         </ul>
     </nav>
@@ -313,18 +277,63 @@
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        
+        const tableBody = document.getElementById('case-table-body');
+        if (tableBody) {
+            tableBody.addEventListener('click', function(e) {
+                // 定義所有不該觸發展開的互動元件
+                const interactiveElement = e.target.closest(
+                    'input, select, textarea, a, button, .dropdown'
+                );
+                
+                // 如果點擊的是互動元件，就直接結束，讓 HTMX 或瀏覽器去處理
+                if (interactiveElement) {
+                    return; 
+                }
+
+                // 如果點擊的不是互動元件，就找到外層的可展開行
+                const expandableRow = e.target.closest('.expandable-row');
+                if (expandableRow) {
+                    // 找到這一行對應的、要被展開的內容
+                    const targetId = expandableRow.dataset.bsTarget;
+                    const collapseElement = document.querySelector(targetId);
+                    
+                    if (collapseElement) {
+                        // 手動觸發 Bootstrap 的展開/收合功能
+                        const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
+                        bsCollapse.toggle();
+                    }
+                }
+            });
+        }
+        
+        // --- 以下是您原本的功能性 JavaScript (保持不變) ---
+        $('#bulk-tag-select').select2({
+            theme: 'bootstrap-5',
+            placeholder: '選擇或輸入新標籤...',
+            tags: true,
+            tokenSeparators: [',', ' ']
+        });
+
         const form = document.getElementById('bulk-action-form');
         const addTagBtn = document.getElementById('bulk-add-tag-btn');
         const deleteBtn = document.getElementById('bulk-delete-btn');
 
         if (form && addTagBtn && deleteBtn) {
             addTagBtn.addEventListener('click', function() {
-                const tagInput = form.querySelector('input[name="new_tag"]');
-                if (!tagInput.value.trim()) {
-                    alert('請輸入要新增的標籤！');
-                    tagInput.focus();
+                const tagValue = $('#bulk-tag-select').val(); 
+                if (!tagValue) {
+                    alert('請選擇或輸入要新增的標籤！');
                     return;
                 }
+                let hiddenInput = form.querySelector('input[name="new_tag"]');
+                if (!hiddenInput) {
+                    hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'new_tag';
+                    form.appendChild(hiddenInput);
+                }
+                hiddenInput.value = tagValue;
                 form.action = "{{ url_for('bulk_add_tag') }}";
                 form.submit();
             });
@@ -335,10 +344,31 @@
                     alert('請至少選擇一個要刪除的案例！');
                     return;
                 }
-
                 if (confirm('您確定要刪除所選的 ' + checkedBoxes.length + ' 個案例嗎？此操作無法復原。')) {
                     form.action = "{{ url_for('bulk_delete') }}";
                     form.submit();
+                }
+            });
+        }
+        
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+        if (searchInput && searchBtn) {
+            const performSearch = function() {
+                const searchTerm = searchInput.value.trim();
+                const currentUrl = new URL(window.location.href);
+                if (searchTerm) {
+                    currentUrl.searchParams.set('search_term', searchTerm);
+                } else {
+                    currentUrl.searchParams.delete('search_term');
+                }
+                currentUrl.searchParams.set('page', '1');
+                window.location.href = currentUrl.href;
+            };
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    performSearch();
                 }
             });
         }
@@ -360,14 +390,11 @@
                 e.preventDefault();
                 const currentUrl = new URL(window.location.href);
                 const filterValue = this.dataset.filterValue;
-                const filterType = 'status';
-
                 if (this.classList.contains('active')) {
-                    currentUrl.searchParams.delete(filterType);
+                    currentUrl.searchParams.delete('status');
                 } else {
-                    currentUrl.searchParams.set(filterType, filterValue);
+                    currentUrl.searchParams.set('status', filterValue);
                 }
-                
                 currentUrl.searchParams.set('page', '1');
                 window.location.href = currentUrl.href;
             });
@@ -379,16 +406,13 @@
         }).on('change', function() {
             const selectedTags = $(this).val();
             const currentUrl = new URL(window.location.href);
-            
             currentUrl.searchParams.delete('tag');
             selectedTags.forEach(tag => {
                 currentUrl.searchParams.append('tag', tag);
             });
-
             currentUrl.searchParams.set('page', '1');
             window.location.href = currentUrl.href;
         });
-
 
         const selectAllCheckbox = document.getElementById('select-all-checkbox');
         if (selectAllCheckbox) {
@@ -400,28 +424,32 @@
         }
         
         const toggleAllBtn = document.getElementById('toggle-all-btn');
-        const collapsibleElements = Array.from(document.querySelectorAll('tr.collapse')); 
-        
-        if (toggleAllBtn && collapsibleElements.length > 0) {
+        const expandableRows = Array.from(document.querySelectorAll('.expandable-row')); 
+        if (toggleAllBtn && expandableRows.length > 0) {
             let isProcessing = false;
-            function processInBatches(elements, action, batchSize = 20) {
+            function processInBatches(rows, action, batchSize = 20) {
                 if (isProcessing) return; 
                 isProcessing = true;
                 toggleAllBtn.disabled = true;
                 let index = 0;
                 function nextBatch() {
-                    const batch = elements.slice(index, index + batchSize);
+                    const batch = rows.slice(index, index + batchSize);
                     if (batch.length === 0) {
                         isProcessing = false; 
                         toggleAllBtn.disabled = false;
                         return;
                     }
-                    batch.forEach(el => {
-                        const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el);
-                        if (action === 'show') {
-                            bsCollapse.show();
-                        } else {
-                            bsCollapse.hide();
+                    batch.forEach(row => {
+                        const targetId = row.dataset.bsTarget;
+                        const collapseEl = document.querySelector(targetId);
+                        if (collapseEl) {
+                            const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
+                            if (action === 'show') {
+                                htmx.trigger(row, 'click');
+                                bsCollapse.show();
+                            } else {
+                                bsCollapse.hide();
+                            }
                         }
                     });
                     index += batchSize;
@@ -434,15 +462,14 @@
                 const currentState = this.dataset.state;
                 const icon = this.querySelector('i');
                 const text = this.querySelector('span');
-
                 if (currentState === 'collapsed') {
-                    processInBatches(collapsibleElements, 'show');
+                    processInBatches(expandableRows, 'show');
                     this.dataset.state = 'expanded';
                     icon.classList.remove('bi-arrows-expand');
                     icon.classList.add('bi-arrows-collapse');
                     text.textContent = '全部收合';
                 } else {
-                    processInBatches(collapsibleElements, 'hide');
+                    processInBatches(expandableRows, 'hide');
                     this.dataset.state = 'collapsed';
                     icon.classList.remove('bi-arrows-collapse');
                     icon.classList.add('bi-arrows-expand');
