@@ -3,23 +3,17 @@
       hx-swap="innerHTML">
     <div class="mb-2">
         <select name="status" class="form-select form-select-sm">
-            {% for status_option in status_options %}
-                <option value="{{ status_option }}" {% if case.status == status_option %}selected{% endif %}>
-                    {{ status_option }}
-                </option>
+            {% for status in status_options %}
+            <option value="{{ status }}" {% if case.status == status %}selected{% endif %}>{{ status }}</option>
             {% endfor %}
         </select>
     </div>
     <div class="mb-2">
-        <textarea name="actual_result" class="form-control" rows="3" placeholder="輸入實際結果...">{{ case.actual_result or '' }}</textarea>
+        <textarea name="actual_result" class="form-control form-control-sm" rows="3" placeholder="輸入實際結果...">{{ case.actual_result or '' }}</textarea>
     </div>
-
-    <button type="submit" class="btn btn-primary btn-sm py-0">儲存</button>
     
-    {# --- CORE FIX --- #}
-    <button type="button" 
-            hx-get="{{ url_for('display_status_result', id=case.id) }}" 
-            hx-target="#status-result-wrapper-{{ case.id }}"
-            hx-swap="innerHTML"
-            class="btn btn-secondary btn-sm py-0">取消</button>
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-sm btn-secondary" hx-get="{{ url_for('display_status_result', id=case.id) }}" hx-target="#status-result-wrapper-{{ case.id }}" hx-swap="innerHTML">取消</button>
+        <button type="submit" class="btn btn-sm btn-primary">儲存</button>
+    </div>
 </form>

@@ -8,7 +8,21 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style>
         body { display: flex; background-color: #f8f9fa; }
-        #sidebar { width: 280px; flex-shrink: 0; min-height: 100vh; background: #fff; padding: 1.5rem; box-shadow: 2px 0 5px rgba(0,0,0,0.1); transition: margin-left 0.3s ease-in-out; }
+        
+        #sidebar { 
+            width: 280px; 
+            flex-shrink: 0; 
+            background: #fff; 
+            padding: 1.5rem; 
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1); 
+            transition: margin-left 0.3s ease-in-out;
+            
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
         #content { flex-grow: 1; padding: 2rem; width: calc(100% - 280px); transition: width 0.3s ease-in-out, margin-left 0.3s ease-in-out; }
         body.sidebar-collapsed #sidebar { margin-left: -280px; }
         body.sidebar-collapsed #content { width: 100%; }
@@ -23,10 +37,30 @@
         .tree-nav li a:hover { background-color: #f0f0f0; }
         .tree-nav .sub-menu { padding-left: 1.5rem; display: none; }
         .tree-nav .parent.active > .sub-menu, .tree-nav .parent.open > .sub-menu { display: block; }
-        .tree-nav .parent > a::before { content: '\F286'; font-family: 'bootstrap-icons'; margin-right: 0.5rem; transition: transform 0.2s ease; }
-        .tree-nav .parent.active > a::before, .tree-nav .parent.open > a::before { transform: rotate(90deg); }
+        .tree-nav .parent > a { cursor: pointer; }
+        
+        /* ★★★ 核心修正點 ★★★ */
+        /* 預設狀態 (收合)，顯示朝上的箭頭 */
+        .tree-nav .parent > a::before { 
+            content: '\F286'; /* Bootstrap Icon: chevron-up */
+            font-family: 'bootstrap-icons';
+            margin-right: 0.5rem;
+        }
+        
+        /* 展開狀態，顯示朝下的箭頭 */
+        .tree-nav .parent.active > a::before, .tree-nav .parent.open > a::before { 
+            content: '\F282'; /* Bootstrap Icon: chevron-down */
+        }
+
         .tree-nav .active-filter { background-color: #0d6efd; color: white !important; }
-        #content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        #content-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 2rem;
+            position: relative;
+            z-index: 1030;
+        }
         .tag-removable { cursor: pointer; transition: background-color 0.2s ease-in-out; }
         .tag-removable:hover { background-color: #dc3545 !important; color: white; }
         .cell-edit-trigger { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; height: 100%; }
@@ -56,7 +90,7 @@
                 <h3>{% block page_title %}{% endblock %}</h3>
             </div>
             
-            <nav class="d-flex align-items-center gap-2">
+            <nav class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
                 <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-list-ul me-1"></i> 案例列表
                 </a>
@@ -78,11 +112,11 @@
                         </li>
                         
                         <li><hr class="dropdown-divider"></li>
-                    <li>
-                        <a class="dropdown-item" href="{{ url_for('export_cases', product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">
-                            <i class="bi bi-file-earmark-excel me-2"></i>匯出目前列表
-                        </a>
-                    </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('export_cases', product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">
+                                <i class="bi bi-file-earmark-excel me-2"></i>匯出目前列表
+                            </a>
+                        </li>
                         
                     </ul>
                 </div>
@@ -147,10 +181,6 @@
         
         document.querySelectorAll('.tree-nav .parent > a').forEach(item => {
             item.addEventListener('click', event => {
-                if (event.target.tagName === 'A') {
-                    window.location.href = event.target.href;
-                    return;
-                }
                 event.preventDefault(); 
                 item.parentElement.classList.toggle('open');
             });

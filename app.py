@@ -5,14 +5,20 @@ import io
 from types import SimpleNamespace
 from urllib.parse import quote 
 from flask import (Flask, render_template, request, redirect, url_for, 
-                   flash, Response)
-from flask_sqlalchemy import SQLAlchemy
+                   flash, Response, send_from_directory)
 from sqlalchemy import func, or_
-from flask_migrate import Migrate
 from werkzeug.utils import secure_filename
+import uuid
+
+# 從我們的新檔案中匯入所需物件
+from extensions import db, migrate 
+from models import TestCase, Tag, Attachment
+from services import process_excel_file
+from utils import categorize_case, process_tags, load_category_rules
 
 # --- 1. 初始化與設定 ---
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+ATTACHMENT_FOLDER = os.path.join(UPLOAD_FOLDER, 'attachments') 
 ALLOWED_EXTENSIONS = {'xlsx'}
 
 app = Flask(__name__)
@@ -20,126 +26,28 @@ app.config['SECRET_KEY'] = 'a_very_secure_and_random_secret_key_for_production'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///testcases.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['ATTACHMENT_FOLDER'] = ATTACHMENT_FOLDER 
 
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+db.init_app(app)
+migrate.init_app(app, db)
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+if not os.path.exists(ATTACHMENT_FOLDER):
+    os.makedirs(ATTACHMENT_FOLDER)
 
-# --- 2. 資料庫模型定義 (標籤系統升級) ---
+# --- 路由 (Web 頁面邏輯) ---
 
-# 步驟 1: 建立 TestCase 和 Tag 之間的多對多關聯表
-test_case_tags = db.Table('test_case_tags',
-    db.Column('test_case_id', db.Integer, db.ForeignKey('test_case.id'), primary_key=True),
-    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True)
-)
-
-# 步驟 2: 建立新的 Tag 模型
-class Tag(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)
-
-    def __repr__(self):
-        return f'<Tag {self.name}>'
-
-class TestCase(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    product_type = db.Column(db.String(50), nullable=False, default='未分類產品')
-    category = db.Column(db.String(100), nullable=False)
-    main_category = db.Column(db.String(50), nullable=True)
-    sub_category = db.Column(db.String(50), nullable=True)
-    case_id = db.Column(db.String(50), unique=True, nullable=False)
-    test_item = db.Column(db.String(200), nullable=False)
-    test_purpose = db.Column(db.Text, nullable=True)
-    preconditions = db.Column(db.Text, nullable=True)
-    test_steps = db.Column(db.Text, nullable=True)
-    expected_result = db.Column(db.Text, nullable=True)
-    actual_result = db.Column(db.Text, nullable=True)
-    status = db.Column(db.String(20), nullable=False, default='未執行')
-    # 舊的 tags 欄位已被下方的 relationship 取代
-    # tags = db.Column(db.Text, nullable=True)
-    notes = db.Column(db.Text, nullable=True)
-    reference = db.Column(db.String(200), nullable=True)
-
-    # 步驟 3: 建立與 Tag 模型的多對多關係
-    tags = db.relationship('Tag', secondary=test_case_tags, lazy='subquery',
-                           backref=db.backref('test_cases', lazy=True))
-
-# --- 3. 輔助函式 ---
-
-def process_tags(tags_string):
-    """
-    處理傳入的標籤字串，返回 Tag 物件列表。
-    如果標籤不存在，會自動建立。
-    """
-    if not tags_string or not isinstance(tags_string, str):
-        return []
-    
-    processed_tags = []
-    tag_names = [name.strip().lower() for name in tags_string.split(',') if name.strip()]
-    
-    for name in tag_names:
-        tag = Tag.query.filter_by(name=name).first()
-        if not tag:
-            tag = Tag(name=name)
-            db.session.add(tag)
-        processed_tags.append(tag)
-        
-    # 因為可能新增 tag，先 flush 以確保 tag 物件有 id
-    db.session.flush()
-    return processed_tags
-
-def load_category_rules():
-    """從 category_rules.json 檔案載入分類規則。"""
-    try:
-        rules_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'category_rules.json')
-        with open(rules_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        print("警告：'category_rules.json' 檔案找不到或格式錯誤，將無法進行自動分類。")
-        return []
-
-CATEGORY_RULES = load_category_rules()
-
-def categorize_case(case_data, product_type):
-    """
-    根據載入的規則(CATEGORY_RULES)與指定的產品別，
-    比對測試案例的內容並回傳最精確的分類。
-    """
-    rules_for_product = CATEGORY_RULES.get(product_type, [])
-    if not rules_for_product:
-        return "其他", "未分類"
-
-    text_to_check = (
-        f"{case_data.get('測試項目', '')} "
-        f"{case_data.get('測試目的', '')} "
-        f"{case_data.get('測試步驟', '')} "
-        f"{case_data.get('預期結果', '')} "
-        f"{case_data.get('category', '')}"
-    )
-    
-    for rule in rules_for_product:
-        for keyword in rule['keywords']:
-            if keyword in text_to_check:
-                return rule['main_category'], rule['sub_category']
-            
-    return "其他", "未分類"
-
-# --- 4. 路由 (Web 頁面邏輯) ---
-
+# ... (context_processor, dashboard, search, index, add_case, edit_case, delete_case, status_result 相關路由保持不變) ...
 @app.context_processor
 def inject_status_options():
-    status_options = ['未執行', '通過', '失敗', '阻塞']
+    status_options = ['未執行', '進行中', '通過', '失敗']
     return dict(status_options=status_options)
-
-# app.py
 
 @app.route('/dashboard')
 def dashboard():
-    # --- 1. 狀態統計圓餅圖數據 ---
     status_distribution = db.session.query(
-        TestCase.status, 
+        TestCase.status,
         func.count(TestCase.status)
     ).group_by(TestCase.status).all()
     
@@ -148,7 +56,6 @@ def dashboard():
         'data': [status[1] for status in status_distribution]
     }
 
-    # --- 2. 各主要分類的測試進度數據 ---
     main_categories = db.session.query(
         TestCase.main_category
     ).group_by(TestCase.main_category).order_by(TestCase.main_category).all()
@@ -170,7 +77,7 @@ def dashboard():
         pass_percentage = (passed / total * 100) if total > 0 else 0
 
         progress_data.append({
-            'category': category_name,
+            'category': category_name.replace('功能', ''),
             'total': total,
             'completed': completed,
             'passed': passed,
@@ -178,21 +85,17 @@ def dashboard():
             'pass_percentage': round(pass_percentage, 1)
         })
 
-    # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-    # ★ 核心修正點：在這裡計算總結數據 (summary_data) ★
-    # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
     summary_data = {
         'total_cases': sum(item['total'] for item in progress_data),
         'completed_cases': sum(item['completed'] for item in progress_data),
         'passed_cases': sum(item['passed'] for item in progress_data)
     }
-    # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     return render_template(
         'dashboard.html',
         pie_chart_data=json.dumps(pie_chart_data),
         progress_data=progress_data,
-        summary_data=summary_data,  # <-- ★ 確保 summary_data 被傳遞給前端 ★
+        summary_data=summary_data,
         hide_sidebar=True
     )
 
@@ -213,12 +116,9 @@ def search():
 
     found_cases = TestCase.query.filter(search_filter).order_by(TestCase.case_id).all()
 
-    # ★★★ 核心修正點：建立一個更完整的假的 pagination 物件 ★★★
-    # 我們補上了 .pages 屬性，並將其設為 0，
-    # 這樣 {% if pagination and pagination.pages > 1 %} 的判斷就不會出錯。
     mock_pagination = SimpleNamespace(
         total=len(found_cases),
-        pages=0, # <-- ★★★ 補上這一行 ★★★
+        pages=0,
         iter_pages=lambda: []
     )
 
@@ -234,7 +134,13 @@ def search():
 @app.route('/')
 def index():
     page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    if per_page not in [10, 20, 30, 40, 50]:
+        per_page = 50
     
+    selected_statuses = request.args.getlist('status')
+    selected_tags = request.args.getlist('tag')
+
     all_cases_for_tree = db.session.query(TestCase.product_type, TestCase.main_category, TestCase.sub_category).distinct().all()
     tree_data = {}
     for prod, main_cat, sub_cat in all_cases_for_tree:
@@ -250,6 +156,7 @@ def index():
 
     global_precondition = None
     if selected_product:
+        CATEGORY_RULES = load_category_rules()
         global_preconditions = CATEGORY_RULES.get('global_preconditions', {})
         global_precondition = global_preconditions.get(selected_product)
 
@@ -260,10 +167,18 @@ def index():
         query = query.filter_by(main_category=selected_main_category)
     if selected_sub_category:
         query = query.filter_by(sub_category=selected_sub_category)
-            
-    pagination = query.order_by(TestCase.case_id).paginate(page=page, per_page=50, error_out=False)
+
+    if selected_statuses:
+        query = query.filter(TestCase.status.in_(selected_statuses))
+    if selected_tags:
+        for tag_name in selected_tags:
+            query = query.filter(TestCase.tags.any(name=tag_name))
+
+    pagination = query.order_by(TestCase.case_id).paginate(page=page, per_page=per_page, error_out=False)
     cases_to_display = pagination.items
     
+    all_tags = Tag.query.order_by(Tag.name).all()
+
     return render_template('cases.html', 
                            cases=cases_to_display, 
                            tree_data=tree_data,
@@ -271,7 +186,11 @@ def index():
                            selected_product=selected_product, 
                            selected_main_category=selected_main_category,
                            selected_sub_category=selected_sub_category,
-                           global_precondition=global_precondition)
+                           global_precondition=global_precondition,
+                           per_page=per_page,
+                           all_tags=all_tags,
+                           selected_tags=selected_tags,
+                           selected_statuses=selected_statuses)
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_case():
@@ -290,7 +209,6 @@ def add_case():
             actual_result=case_data.get('actual_result'), status=case_data.get('status', '未執行'),
             notes=case_data.get('notes'), reference=case_data.get('reference')
         )
-        # ★ 標籤處理更新
         tags_string = case_data.get('tags', '')
         new_case.tags = process_tags(tags_string)
 
@@ -323,7 +241,6 @@ def edit_case(id):
         case_to_edit.notes = case_data.get('notes')
         case_to_edit.reference = case_data.get('reference')
         
-        # ★ 標籤處理更新
         tags_string = case_data.get('tags', '')
         case_to_edit.tags = process_tags(tags_string)
 
@@ -337,8 +254,7 @@ def delete_case(id):
     case_to_delete = TestCase.query.get_or_404(id)
     db.session.delete(case_to_delete)
     db.session.commit()
-    flash('測試案例已成功刪除。', 'info')
-    return redirect(url_for('index'))
+    return '', 200
 
 @app.route('/edit-status-result/<int:id>', methods=['GET', 'POST'])
 def edit_status_result(id):
@@ -357,7 +273,6 @@ def display_status_result(id):
 
 @app.route('/delete-tag/<int:id>', methods=['POST'])
 def delete_tag(id):
-    # ★ 刪除標籤邏輯更新
     case = TestCase.query.get_or_404(id)
     tag_name_to_delete = request.form.get('tag')
     if tag_name_to_delete:
@@ -375,7 +290,9 @@ def bulk_add_tag():
     redirect_params = {
         'product': request.form.get('product'),
         'main_category': request.form.get('main_category'),
-        'sub_category': request.form.get('sub_category')
+        'sub_category': request.form.get('sub_category'),
+        'page': request.form.get('page', 1, type=int),
+        'per_page': request.form.get('per_page', 50, type=int)
     }
     cleaned_redirect_params = {k: v for k, v in redirect_params.items() if v}
 
@@ -383,14 +300,11 @@ def bulk_add_tag():
         flash('未選擇任何案例或未輸入標籤。', 'warning')
         return redirect(url_for('index', **cleaned_redirect_params))
 
-    # ★ 批次新增標籤邏輯更新
-    # 先找到或建立 Tag 物件
     tag_to_add = Tag.query.filter_by(name=new_tag_name).first()
     if not tag_to_add:
         tag_to_add = Tag(name=new_tag_name)
         db.session.add(tag_to_add)
 
-    # 遍歷所有選擇的 case
     cases_to_update = TestCase.query.filter(TestCase.id.in_(case_ids)).all()
     for case in cases_to_update:
         if tag_to_add not in case.tags:
@@ -399,14 +313,62 @@ def bulk_add_tag():
     db.session.commit()
     flash(f'已為 {len(case_ids)} 個案例成功新增標籤 "{new_tag_name}"！', 'success')
     return redirect(url_for('index', **cleaned_redirect_params))
+
+@app.route('/bulk-delete', methods=['POST'])
+def bulk_delete():
+    case_ids = request.form.getlist('case_ids')
     
+    redirect_params = {
+        'product': request.form.get('product'),
+        'main_category': request.form.get('main_category'),
+        'sub_category': request.form.get('sub_category'),
+        'page': request.form.get('page', 1, type=int),
+        'per_page': request.form.get('per_page', 50, type=int)
+    }
+    cleaned_redirect_params = {k: v for k, v in redirect_params.items() if v}
+
+    if not case_ids:
+        flash('未選擇任何案例。', 'warning')
+        return redirect(url_for('index', **cleaned_redirect_params))
+
+    cases_to_delete = TestCase.query.filter(TestCase.id.in_(case_ids)).all()
+    
+    for case in cases_to_delete:
+        db.session.delete(case)
+        
+    db.session.commit()
+    
+    flash(f'已成功刪除 {len(cases_to_delete)} 個案例！', 'success')
+    return redirect(url_for('index', **cleaned_redirect_params))
+
 @app.route('/edit-notes/<int:id>', methods=['GET', 'POST'])
 def edit_notes(id):
     case = TestCase.query.get_or_404(id)
     if request.method == 'POST':
         case.notes = request.form.get('notes', '')
+        
+        if 'attachment' in request.files:
+            file = request.files['attachment']
+            if file and file.filename != '':
+                original_filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4().hex}_{original_filename}"
+                file_path = os.path.join(app.config['ATTACHMENT_FOLDER'], unique_filename)
+                file.save(file_path)
+                
+                new_attachment = Attachment(
+                    filename=original_filename,
+                    filepath=unique_filename,
+                    test_case_id=case.id
+                )
+                db.session.add(new_attachment)
+
         db.session.commit()
-        return render_template('partials/_notes_display.html', case=case)
+        
+        # ★★★ 核心修正點 2: 回傳 display 樣板，並加上觸發器 ★★★
+        response = Response(render_template('partials/_notes_display.html', case=case))
+        response.headers['HX-Trigger'] = f'refreshDetails-{case.id}'
+        return response
+
     return render_template('partials/_notes_edit.html', case=case)
 
 @app.route('/display-notes/<int:id>')
@@ -414,10 +376,56 @@ def display_notes(id):
     case = TestCase.query.get_or_404(id)
     return render_template('partials/_notes_display.html', case=case)
 
+@app.route('/attachments/view/<filename>')
+def serve_attachment(filename):
+    return send_from_directory(app.config['ATTACHMENT_FOLDER'], filename)
+
+@app.route('/attachments/download/<filename>')
+def download_attachment(filename):
+    return send_from_directory(app.config['ATTACHMENT_FOLDER'], filename, as_attachment=True)
+
+@app.route('/attachments/delete/<int:attachment_id>', methods=['POST'])
+def delete_attachment(attachment_id):
+    attachment = Attachment.query.get_or_404(attachment_id)
+    case_id = attachment.test_case_id
+    
+    try:
+        os.remove(os.path.join(app.config['ATTACHMENT_FOLDER'], attachment.filepath))
+    except OSError as e:
+        print(f"Error deleting file {attachment.filepath}: {e}")
+
+    db.session.delete(attachment)
+    db.session.commit()
+
+    case = TestCase.query.get_or_404(case_id)
+    
+    # ★★★ 核心修正點 3: 回傳 edit 樣板，並加上觸發器 ★★★
+    response = Response(render_template('partials/_notes_edit.html', case=case))
+    response.headers['HX-Trigger'] = f'refreshDetails-{case.id}'
+    return response
+
+# ★★★ 核心修正點 4: 新增專門用來刷新詳細內容的路由 ★★★
+@app.route('/case-details/<int:id>')
+def get_case_details(id):
+    case = TestCase.query.get_or_404(id)
+    # 記得要傳遞 render_manual_list 函式給 partial
+    return render_template('partials/_case_details_content.html', case=case, render_manual_list=render_manual_list)
+
+# 輔助函式，讓樣板可以呼叫
+@app.context_processor
+def utility_processor():
+    def render_manual_list_in_template(text_block):
+        lines = [line.strip().lstrip('0123456789. ') for line in (text_block or "").split('\n') if line.strip()]
+        html = '<div class="manual-list">'
+        for i, line in enumerate(lines):
+            html += f'<div class="manual-list-item"><span class="manual-list-number">{i+1}.</span><span class="manual-list-text">{line}</span></div>'
+        html += '</div>'
+        return html
+    return dict(render_manual_list=render_manual_list_in_template)
+
+
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_page():
-    # 延後匯入以避免循環依賴
-    from services import process_excel_file
     if request.method == 'POST':
         uploaded_files = request.files.getlist('files')
         if not uploaded_files or uploaded_files[0].filename == '':
@@ -438,11 +446,6 @@ def upload_page():
                     flash(f'處理檔案 "{filename}" 時發生錯誤：{e}', 'danger')
                     db.session.rollback()
                     break 
-        
-        # ★ 注意：因為 process_tags 會自動 commit，這裡的 commit 邏輯需要調整
-        # 改為在 process_excel_file 內部處理 commit
-        # if total_imported_count > 0 and not has_error:
-        #     db.session.commit()
 
         if not has_error and total_imported_count > 0:
              flash(f'所有檔案處理完畢！共成功匯入 {total_imported_count} 筆新案例！', 'success')
@@ -453,22 +456,19 @@ def upload_page():
 
     return render_template('upload.html')
 
-
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/export')
 def export_cases():
-    """
-    處理測試案例的匯出請求，根據篩選條件產生 Excel 檔案。
-    """
-    # 1. 接收與主列表頁完全相同的篩選參數
     product = request.args.get('product')
     main_category = request.args.get('main_category')
     sub_category = request.args.get('sub_category')
+    
+    selected_statuses = request.args.getlist('status')
+    selected_tags = request.args.getlist('tag')
 
-    # 2. 根據參數建立資料庫查詢
     query = TestCase.query
     if product:
         query = query.filter_by(product_type=product)
@@ -476,18 +476,22 @@ def export_cases():
         query = query.filter_by(main_category=main_category)
     if sub_category:
         query = query.filter_by(sub_category=sub_category)
-    
+    if selected_statuses:
+        query = query.filter(TestCase.status.in_(selected_statuses))
+    if selected_tags:
+        for tag_name in selected_tags:
+            query = query.filter(TestCase.tags.any(name=tag_name))
+
     cases_to_export = query.order_by(TestCase.case_id).all()
 
     if not cases_to_export:
         flash('沒有符合目前篩選條件的資料可供匯出。', 'warning')
         return redirect(request.referrer or url_for('index'))
 
-    # 4. 將查詢結果轉換成 Pandas DataFrame
     data_for_df = [{
         'Case ID': case.case_id,
         '產品類型': case.product_type,
-        '主分類': case.main_category,
+        '主分類': case.main_category.replace('功能', '') if case.main_category else '',
         '子分類': case.sub_category,
         '測試項目': case.test_item,
         '測試目的': case.test_purpose,
@@ -496,12 +500,11 @@ def export_cases():
         '預期結果': case.expected_result,
         '實際結果': case.actual_result,
         '狀態': case.status,
-        '標籤': ", ".join(tag.name for tag in case.tags), # 假設您已更新為多對多關係
+        '標籤': ", ".join(tag.name for tag in case.tags),
         '備註': case.notes
     } for case in cases_to_export]
     df = pd.DataFrame(data_for_df)
 
-    # 5. 在記憶體中建立一個 Excel 檔案
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='TestCases')
@@ -511,16 +514,14 @@ def export_cases():
             worksheet.set_column(i, i, column_len)
     output.seek(0)
 
-    # 6. 準備下載的檔名
     filename = "test_cases_export.xlsx"
     if sub_category:
         filename = f"{sub_category}.xlsx"
     elif main_category:
-        filename = f"{main_category}.xlsx"
+        filename = f"{main_category.replace('功能', '')}.xlsx"
     elif product:
         filename = f"{product}.xlsx"
     
-    # 7. 將檔案作為附件回傳給使用者下載 (這一段現在有正確的縮排)
     return Response(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -529,12 +530,6 @@ def export_cases():
         }
     )
 
-
 # --- 5. 啟動程式 ---
 if __name__ == '__main__':
-    # 刪除 db.create_all()，由 Flask-Migrate 管理
-    # with app.app_context():
-    #     db.create_all()
-    app.run(debug=True, port=5001)
-
-    
+    app.run(host='0.0.0.0', port=5001, debug=True)

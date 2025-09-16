@@ -4,15 +4,14 @@
         <span class="badge 
             {% if case.status == '通過' %} bg-success
             {% elif case.status == '失敗' %} bg-danger
-            {% elif case.status == '阻塞' %} bg-warning text-dark
+            {% elif case.status == '進行中' %} bg-warning text-dark
             {% else %} bg-secondary
-            {% endif %} me-2" style="width: 50px;">
+            {% endif %} me-2" style="width: 70px;">
             {{ case.status }}
         </span>
         <span style="white-space: pre-wrap;">{{ case.actual_result or '' }}</span>
     </p>
 
-    {# --- CORE FIX --- #}
     <button hx-get="{{ url_for('edit_status_result', id=case.id) }}" 
             hx-target="#status-result-wrapper-{{ case.id }}" 
             hx-swap="innerHTML"

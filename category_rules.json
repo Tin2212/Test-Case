@@ -1,7 +1,7 @@
 {
-  "global_preconditions": {
-    "郵件閘道": "1. Smail 郵件閘道已成功安裝並啟用。\n2. 系統管理者帳號 (admin@example.com) 已可用。\n3. 測試用的 DNS 伺服器已正確設定 MX Record。",
-    "郵件歸檔": "1. Smail 郵件歸檔已成功安裝並啟用。\n2. 系統已設定至少一個可用的儲存資源。\n3. 已有測試郵件透過匯入計畫或外部索引進入系統。"
+"global_preconditions": {
+    "郵件閘道": "測試環境已部署 Smail v3.24.0 郵件閘道系統，且各項服務皆正常運行。\n\n測試環境的網路連線正常，DNS 解析可正常運作。\n\n已建立至少兩個測試網域 (e.g., test-domain.com, qa-domain.com)。\n\n已建立各層級管理員帳號：\n\n- 系統管理員 (sysadmin@smail.local)\n\n- test-domain.com 的網域管理員 (domainadmin@test-domain.com)\n\n- qa-domain.com 的網域管理員 (domainadmin@qa-domain.com)\n\n在各網域下已建立多個測試使用者帳號 (e.g., user1@test-domain.com, user2@test-domain.com, user1@qa-domain.com)，且帳號為啟用狀態。\n\n測試用的外部郵件帳號 (e.g., external.tester@gmail.com) 已備妥，可用於收發郵件。\n\n測試客戶端已安裝指定的支援瀏覽器 (Chrome, Edge 最新版本)。\n\n所有測試帳號的密碼均為已知。",
+    "郵件歸檔": "測試環境已部署 Smail v3.24.0 郵件歸檔系統，且各項服務皆正常運行。\n\n測試人員已準備好至少一組具備「系統管理者」權限的帳號，以便存取所有管理功能。\n\n測試客戶端使用指定的瀏覽器（建議為 Chrome 或 Edge）訪問 Smail 管理介面。\n\n測試用的郵件來源伺服器（如 POP3/IMAP/EWS Server）已架設完成，並包含多種類型的測試郵件。\n\nSmail 系統中已建立至少一個測試網域（例如： example.com）。"
   },
   "郵件閘道": [
     { "keywords": ["登入", "登出", "切換帳號", "驗證失敗", "忘記密碼"], "main_category": "使用者介面", "sub_category": "登入與登出" },

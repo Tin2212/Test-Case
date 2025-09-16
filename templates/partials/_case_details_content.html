@@ -1,0 +1,53 @@
+<td colspan="6" style="background-color: #f8f9fa; padding: 20px;">
+    <div class="row g-3">
+         <div class="col-md-6">
+            <strong>測試目的:</strong>
+            <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.test_purpose }}</p>
+        </div>
+        <div class="col-md-6">
+            <strong>前置條件:</strong>
+            {{ render_manual_list(case.preconditions) }}
+        </div>
+        <div class="col-md-6">
+            <strong>測試步驟:</strong>
+            {{ render_manual_list(case.test_steps) }}
+        </div>
+         <div class="col-md-6">
+            <strong>預期結果:</strong>
+            <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.expected_result }}</p>
+        </div>
+         <div class="col-md-6">
+            <strong>備註:</strong>
+            <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.notes }}</p>
+        </div>
+        <div class="col-md-6">
+            <strong>參考資料:</strong>
+            <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.reference }}</p>
+        </div>
+        
+        {% if case.attachments %}
+        <div class="col-md-12">
+            <strong>附件:</strong>
+            <div class="d-flex flex-wrap align-items-start">
+            {% for attachment in case.attachments %}
+                {% set filename_lower = attachment.filename.lower() %}
+                {% set is_image = filename_lower.endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')) %}
+
+                {% if is_image %}
+                    <div class="me-3 mb-3 text-center" style="max-width: 300px;">
+                        <a href="{{ url_for('download_attachment', filename=attachment.filepath) }}" class="d-block mb-1 small" title="下載檔案">{{ attachment.filename }}</a>
+                        <a href="{{ url_for('serve_attachment', filename=attachment.filepath) }}" target="_blank">
+                            <img src="{{ url_for('serve_attachment', filename=attachment.filepath) }}" class="img-fluid rounded border" style="max-height: 200px;">
+                        </a>
+                    </div>
+                {% else %}
+                    <a href="{{ url_for('download_attachment', filename=attachment.filepath) }}" class="btn btn-outline-secondary btn-sm me-2 mb-2" title="{{ attachment.filename }}">
+                        <i class="bi bi-download me-1"></i> {{ attachment.filename|truncate(30) }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</td>

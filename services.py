@@ -1,5 +1,7 @@
 # services.py
-from app import db, TestCase, categorize_case, process_tags
+from extensions import db
+from models import TestCase
+from utils import categorize_case, process_tags
 import pandas as pd
 
 def process_excel_file(file_stream, filename):
@@ -34,14 +36,12 @@ def process_excel_file(file_stream, filename):
                     reference=row.get('參考資料', '')
                 )
 
-                # ★ 標籤處理更新
                 tags_string = row.get('標籤', '')
                 new_case.tags = process_tags(tags_string)
                 
                 db.session.add(new_case)
                 imported_count += 1
     
-    # 將本次檔案的所有變更一次性提交
     if imported_count > 0:
         db.session.commit()
         

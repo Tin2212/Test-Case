@@ -11,17 +11,6 @@
     </div>
 {% endmacro %}
 
-{# --- 這是「插頭」，它會找到 base.html 中名為 extra_dropdown_items 的「插座」並填入內容 --- #}
-{% block extra_dropdown_items %}
-    <li><hr class="dropdown-divider"></li>
-    <li>
-        <a class="dropdown-item" href="{{ url_for('export_cases', product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">
-            <i class="bi bi-file-earmark-excel me-2"></i>匯出目前列表
-        </a>
-    </li>
-{% endblock %}
-
-
 {% block page_title %}
     測試案例列表
 {% endblock %}
@@ -43,7 +32,7 @@
                         {% for main_group, sub_groups in main_categories.items()|sort %}
                              <li class="parent {% if product == selected_product and main_group == selected_main_category %}active open{% endif %}">
                                 <a href="{{ url_for('index', product=product, main_category=main_group) }}">
-                                    {{ main_group }}
+                                    {{ main_group.replace('功能', '') }}
                                 </a>
                                 <ul class="sub-menu">
                                     {% for sub in sub_groups|sort %}
@@ -67,9 +56,9 @@
 {% block content %}
     <h4 class="mb-3">
         {% if selected_sub_category %}
-            {{ selected_product }} / {{ selected_main_category }} / {{ selected_sub_category }}
+            {{ selected_product }} / {{ selected_main_category.replace('功能', '') }} / {{ selected_sub_category }}
         {% elif selected_main_category %}
-            {{ selected_product }} / {{ selected_main_category }}
+            {{ selected_product }} / {{ selected_main_category.replace('功能', '') }}
         {% elif selected_product %}
             {{ selected_product }}
         {% else %}
@@ -88,23 +77,67 @@
     </div>
     {% endif %}
 
-    <form id="bulk-action-form" action="{{ url_for('bulk_add_tag') }}" method="POST">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <label class="form-label mb-0"><strong><i class="bi bi-flag-fill me-1"></i>依狀態：</strong></label>
+                </div>
+                <div class="col">
+                    <div class="btn-group btn-group-sm" role="group">
+                        {% for status in status_options %}
+                        <a href="#" class="btn btn-outline-secondary filter-btn status-filter {% if status in selected_statuses %}active{% endif %}" data-filter-type="status" data-filter-value="{{ status }}">
+                            {{ status }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-auto">
+                     <label for="tag-filter-select" class="form-label mb-0"><strong><i class="bi bi-tags-fill me-1"></i>依標籤：</strong></label>
+                </div>
+                <div class="col-md-4">
+                    <select id="tag-filter-select" class="form-select form-select-sm" multiple>
+                        {% for tag in all_tags %}
+                            <option value="{{ tag.name }}" {% if tag.name in selected_tags %}selected{% endif %}>{{ tag.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <form id="bulk-action-form" method="POST">
         
         <div class="sticky-bar">
             <div class="card">
                 <div class="card-body d-flex justify-content-between align-items-center gap-3">
                     <div class="input-group" style="max-width: 400px;">
                         <span class="input-group-text">標籤</span>
-                        <input type="text" name="new_tag" class="form-control" required placeholder="為選取項目新增標籤...">
-                        <button type="submit" class="btn btn-primary">套用</button>
+                        <input type="text" name="new_tag" class="form-control" placeholder="為選取項目新增標籤...">
+                        <button type="button" id="bulk-add-tag-btn" class="btn btn-primary">套用</button>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" id="expand-all-btn" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-arrows-expand"></i> 全部展開
+                        <button type="button" id="bulk-delete-btn" class="btn btn-danger">
+                            <i class="bi bi-trash-fill"></i> 批量刪除
                         </button>
-                        <button type="button" id="collapse-all-btn" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-arrows-collapse"></i> 全部收合
+                        
+                        <div class="input-group input-group-sm" style="width: 150px;">
+                          <label class="input-group-text" for="per-page-select">每頁顯示</label>
+                          <select class="form-select" id="per-page-select">
+                            <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                            <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                            <option value="30" {% if per_page == 30 %}selected{% endif %}>30</option>
+                            <option value="40" {% if per_page == 40 %}selected{% endif %}>40</option>
+                            <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                          </select>
+                        </div>
+
+                        <button type="button" id="toggle-all-btn" class="btn btn-outline-secondary btn-sm" data-state="collapsed">
+                            <i class="bi bi-arrows-expand"></i> 
+                            <span>全部展開</span>
                         </button>
+
                     </div>
                 </div>
             </div>
@@ -113,10 +146,12 @@
         <input type="hidden" name="product" value="{{ selected_product or '' }}">
         <input type="hidden" name="main_category" value="{{ selected_main_category or '' }}">
         <input type="hidden" name="sub_category" value="{{ selected_sub_category or '' }}">
+        <input type="hidden" name="page" value="{{ pagination.page or 1 }}">
+        <input type="hidden" name="per_page" value="{{ per_page or 50 }}">
         
         <div class="table-responsive">
             <table class="table table-hover table-bordered caption-top table-fixed-layout">
-                <caption>點擊任一案例列即可展開詳情。</caption>
+                <caption></caption>
                 <thead class="table-dark">
                     <tr>
                         <th style="width: 3%;"><input class="form-check-input" type="checkbox" id="select-all-checkbox"></th>
@@ -155,14 +190,19 @@
                                         <li><a class="dropdown-item" href="{{ url_for('edit_case', id=case.id) }}">完整編輯</a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li>
-                                            <form action="{{ url_for('delete_case', id=case.id) }}" method="POST" onsubmit="return confirm('您確定要刪除這個案例嗎？');">
-                                                <button type="submit" class="dropdown-item text-danger">刪除</button>
-                                            </form>
+                                            <button type="button" class="dropdown-item text-danger"
+                                                    hx-post="{{ url_for('delete_case', id=case.id) }}"
+                                                    hx-confirm="您確定要刪除這個案例嗎？"
+                                                    hx-target="closest .case-group"
+                                                    hx-swap="outerHTML">
+                                                刪除
+                                            </button>
                                         </li>
                                     </ul>
                                 </div>
                             </td>
                         </tr>
+                        
                         <tr id="collapse-{{ case.id }}" class="collapse">
                            <td colspan="6" style="background-color: #f8f9fa; padding: 20px;">
                                 <div class="row g-3">
@@ -180,7 +220,7 @@
                                     </div>
                                      <div class="col-md-6">
                                         <strong>預期結果:</strong>
-                                        {{ render_manual_list(case.expected_result) }}
+                                        <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.expected_result }}</p>
                                     </div>
                                      <div class="col-md-6">
                                         <strong>備註:</strong>
@@ -190,9 +230,40 @@
                                         <strong>參考資料:</strong>
                                         <p style="white-space: pre-wrap; margin-bottom: 0;">{{ case.reference }}</p>
                                     </div>
+                                    
+                                    {% if case.attachments %}
+                                    <div class="col-md-12">
+                                        <strong>附件:</strong>
+                                        <div class="d-flex flex-wrap align-items-start">
+                                        {% for attachment in case.attachments %}
+                                            {% set extensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'] %}
+                                            {% set is_image = false %}
+                                            {% for ext in extensions %}
+                                                {% if attachment.filename.lower().endswith(ext) %}
+                                                    {% set is_image = true %}
+                                                {% endif %}
+                                            {% endfor %}
+
+                                            {% if is_image %}
+                                                <div class="me-3 mb-3 text-center" style="max-width: 300px;">
+                                                    <a href="{{ url_for('download_attachment', filename=attachment.filepath) }}" class="d-block mb-1 small" title="下載檔案">{{ attachment.filename }}</a>
+                                                    <a href="{{ url_for('serve_attachment', filename=attachment.filepath) }}" target="_blank">
+                                                        <img src="{{ url_for('serve_attachment', filename=attachment.filepath) }}" class="img-fluid rounded border" style="max-height: 200px;">
+                                                    </a>
+                                                </div>
+                                            {% else %}
+                                                <a href="{{ url_for('download_attachment', filename=attachment.filepath) }}" class="btn btn-outline-secondary btn-sm me-2 mb-2" title="{{ attachment.filename }}">
+                                                    <i class="bi bi-download me-1"></i> {{ attachment.filename|truncate(30) }}
+                                                </a>
+                                            {% endif %}
+                                        {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
+
                     </tbody>
                 {% else %}
                 <tbody>
@@ -209,24 +280,116 @@
     <nav aria-label="Page navigation">
         <ul class="pagination justify-content-center">
             <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('index', page=pagination.prev_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">&laquo;</a>
+                <a class="page-link" href="{{ url_for('index', page=pagination.prev_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page) }}&{{ request.args.to_dict()|urlencode }}">&laquo;</a>
             </li>
             
-            {% for page_num in range(1, pagination.pages + 1) %}
-                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('index', page=page_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">{{ page_num }}</a>
-                </li>
+            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if page_num %}
+                    {% if page_num == pagination.page %}
+                        <li class="page-item active" aria-current="page">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('index', page=page_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page) }}&{{ request.args.to_dict()|urlencode }}">{{ page_num }}</a>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                {% endif %}
             {% endfor %}
 
             <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('index', page=pagination.next_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}">&raquo;</a>
+                <a class="page-link" href="{{ url_for('index', page=pagination.next_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page) }}&{{ request.args.to_dict()|urlencode }}">&raquo;</a>
             </li>
         </ul>
     </nav>
     {% endif %}
     
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('bulk-action-form');
+        const addTagBtn = document.getElementById('bulk-add-tag-btn');
+        const deleteBtn = document.getElementById('bulk-delete-btn');
+
+        if (form && addTagBtn && deleteBtn) {
+            addTagBtn.addEventListener('click', function() {
+                const tagInput = form.querySelector('input[name="new_tag"]');
+                if (!tagInput.value.trim()) {
+                    alert('請輸入要新增的標籤！');
+                    tagInput.focus();
+                    return;
+                }
+                form.action = "{{ url_for('bulk_add_tag') }}";
+                form.submit();
+            });
+
+            deleteBtn.addEventListener('click', function() {
+                const checkedBoxes = form.querySelectorAll('input[name="case_ids"]:checked');
+                if (checkedBoxes.length === 0) {
+                    alert('請至少選擇一個要刪除的案例！');
+                    return;
+                }
+
+                if (confirm('您確定要刪除所選的 ' + checkedBoxes.length + ' 個案例嗎？此操作無法復原。')) {
+                    form.action = "{{ url_for('bulk_delete') }}";
+                    form.submit();
+                }
+            });
+        }
+        
+        const perPageSelect = document.getElementById('per-page-select');
+        if (perPageSelect) {
+            perPageSelect.addEventListener('change', function() {
+                const perPage = this.value;
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('per_page', perPage);
+                currentUrl.searchParams.set('page', '1');
+                window.location.href = currentUrl.href;
+            });
+        }
+        
+        const statusFilterBtns = document.querySelectorAll('.status-filter');
+        statusFilterBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const currentUrl = new URL(window.location.href);
+                const filterValue = this.dataset.filterValue;
+                const filterType = 'status';
+
+                if (this.classList.contains('active')) {
+                    currentUrl.searchParams.delete(filterType);
+                } else {
+                    currentUrl.searchParams.set(filterType, filterValue);
+                }
+                
+                currentUrl.searchParams.set('page', '1');
+                window.location.href = currentUrl.href;
+            });
+        });
+
+        $('#tag-filter-select').select2({
+            theme: 'bootstrap-5',
+            placeholder: '選擇一或多個標籤...'
+        }).on('change', function() {
+            const selectedTags = $(this).val();
+            const currentUrl = new URL(window.location.href);
+            
+            currentUrl.searchParams.delete('tag');
+            selectedTags.forEach(tag => {
+                currentUrl.searchParams.append('tag', tag);
+            });
+
+            currentUrl.searchParams.set('page', '1');
+            window.location.href = currentUrl.href;
+        });
+
+
         const selectAllCheckbox = document.getElementById('select-all-checkbox');
         if (selectAllCheckbox) {
             selectAllCheckbox.addEventListener('click', function(event) {
@@ -235,23 +398,22 @@
                 });
             });
         }
-        const expandAllBtn = document.getElementById('expand-all-btn');
-        const collapseAllBtn = document.getElementById('collapse-all-btn');
+        
+        const toggleAllBtn = document.getElementById('toggle-all-btn');
         const collapsibleElements = Array.from(document.querySelectorAll('tr.collapse')); 
-        if (expandAllBtn && collapseAllBtn && collapsibleElements.length > 0) {
+        
+        if (toggleAllBtn && collapsibleElements.length > 0) {
             let isProcessing = false;
             function processInBatches(elements, action, batchSize = 20) {
                 if (isProcessing) return; 
                 isProcessing = true;
-                expandAllBtn.disabled = true;
-                collapseAllBtn.disabled = true;
+                toggleAllBtn.disabled = true;
                 let index = 0;
                 function nextBatch() {
                     const batch = elements.slice(index, index + batchSize);
                     if (batch.length === 0) {
                         isProcessing = false; 
-                        expandAllBtn.disabled = false;
-                        collapseAllBtn.disabled = false;
+                        toggleAllBtn.disabled = false;
                         return;
                     }
                     batch.forEach(el => {
@@ -267,11 +429,25 @@
                 }
                 nextBatch();
             }
-            expandAllBtn.addEventListener('click', function() {
-                processInBatches(collapsibleElements, 'show');
-            });
-            collapseAllBtn.addEventListener('click', function() {
-                processInBatches(collapsibleElements, 'hide');
+            
+            toggleAllBtn.addEventListener('click', function() {
+                const currentState = this.dataset.state;
+                const icon = this.querySelector('i');
+                const text = this.querySelector('span');
+
+                if (currentState === 'collapsed') {
+                    processInBatches(collapsibleElements, 'show');
+                    this.dataset.state = 'expanded';
+                    icon.classList.remove('bi-arrows-expand');
+                    icon.classList.add('bi-arrows-collapse');
+                    text.textContent = '全部收合';
+                } else {
+                    processInBatches(collapsibleElements, 'hide');
+                    this.dataset.state = 'collapsed';
+                    icon.classList.remove('bi-arrows-collapse');
+                    icon.classList.add('bi-arrows-expand');
+                    text.textContent = '全部展開';
+                }
             });
         }
     });
