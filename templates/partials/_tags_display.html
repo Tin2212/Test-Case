@@ -1,21 +1,14 @@
-<div id="tags-{{ case.id }}" class="tags-container">
-    {% if case.tags %}
-        {# 
-          MODIFICATION: We no longer need to .split(',') because case.tags is now a list of Tag objects.
-          We loop through the list directly and access the tag's name with tag.name.
-        #}
-        {% for tag in case.tags %}
-            <span class="badge bg-secondary me-1">
-                {{ tag.name }}
-                <button class="btn-close btn-close-white ms-1" style="font-size: 0.6em;"
-                        hx-post="{{ url_for('delete_tag', id=case.id) }}"
-                        hx-target="#tags-{{ case.id }}"
-                        hx-swap="outerHTML"
-                        hx-vals='{"tag": "{{ tag.name }}"}'
-                        aria-label="Delete tag"></button>
-            </span>
+<div class="tag-list mt-1">
+    {% for tag in case.tags|sort(attribute='name') %}
+        <span class="badge bg-secondary me-1 tag-item htmx-interactive"
+              style="cursor: pointer;"
+              title="點擊以刪除標籤"
+              hx-post="{{ url_for('delete_tag', id=case.id) }}"
+              hx-vals='{"tag": "{{ tag.name }}"}'
+              hx-target="#tags-container-{{ case.id }}"
+              hx-swap="outerHTML"
+              hx-confirm="您確定要刪除標籤 '{{ tag.name }}' 嗎？">
+            {{ tag.name }}
+        </span>
         {% endfor %}
-    {% else %}
-        <span class="text-muted fst-italic"></span>
-    {% endif %}
 </div>

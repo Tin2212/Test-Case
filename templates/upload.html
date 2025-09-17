@@ -1,39 +1,56 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{# --- 核心修改點 1 --- #}
-{% set hide_sidebar = True %}
-
-{# --- 核心修改點 2 --- #}
-{% block sidebar %}
-{% endblock %}
-
-
-{% block page_title %}
-    從 Excel 匯入案例
-{% endblock %}
+{% block title %}匯入測試案例{% endblock %}
 
 {% block content %}
-    <div class="card">
-        <div class="card-header">
-            <h4>上傳 Excel 檔案</h4>
-        </div>
-        <div class="card-body">
-            <p class="card-text">請選擇一個或多個 Excel (.xlsx) 檔案進行上傳。系統將會讀取檔案中的所有工作表 (Sheet)，並將資料匯入為新的測試案例。如果 Case ID 已存在，將會自動跳過該筆資料。</p>
-            <form action="{{ url_for('upload_page') }}" method="post" enctype="multipart/form-data">
-                <div class="mb-3">
-                    <label for="files" class="form-label">選擇檔案</label>
-                    <input class="form-control" type="file" id="files" name="files" multiple required>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4>
+                        <i class="bi bi-file-earmark-arrow-up-fill me-2"></i>從 Excel 匯入測試案例
+                    </h4>
                 </div>
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                     <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-upload me-2"></i>開始上傳與匯入
-                    </button>
+                <div class="card-body">
+                    <form action="{{ url_for('upload_page') }}" method="post" enctype="multipart/form-data">
+                        
+                        <div class="mb-3">
+                            <label for="product-type-select" class="form-label"><strong>1. 選擇要匯入的產品類型：</strong></label>
+                            <select class="form-select" id="product-type-select" name="product_type" required>
+                                <option value="" disabled selected>-- 請選擇 --</option>
+                                <option value="郵件閘道">郵件閘道 (Gateway)</option>
+                                <option value="郵件歸檔">郵件歸檔 (Archive)</option>
+                                <option value="Smail-Spec">Smail-Spec</option>
+                                <option value="Smail-Tests">Smail-Tests</option>
+                            </select>
+                            <div class="form-text">
+                                選擇後，檔案內的所有案例都會被歸類到這個產品下。
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="formFileMultiple" class="form-label"><strong>2. 選擇要上傳的 Excel 檔案 (.xlsx)：</strong></label>
+                            <input class="form-control" type="file" id="formFileMultiple" name="files" multiple required accept=".xlsx">
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-cloud-upload me-2"></i>開始上傳與匯入
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </form>
-        </div>
-        <div class="card-footer text-muted">
-            請注意：檔案名稱若以 "gateway" 開頭，將被歸類為「郵件閘道」產品；否則將歸類為「郵件歸檔」產品。
+                <div class="card-footer text-muted">
+                    <small>
+                        請注意：
+                        <ul>
+                            <li>系統會根據 Case ID 是否已存在來判斷是否為新案例。已存在的案例將會被略過。</li>
+                            <li>系統會根據您在 <code>category_rules.json</code> 中設定的關鍵字，自動為案例進行主分類和子分類。</li>
+                        </ul>
+                    </small>
+                </div>
+            </div>
         </div>
     </div>
+</div>
 {% endblock %}

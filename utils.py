@@ -35,15 +35,45 @@ def load_category_rules():
         print("警告：'category_rules.json' 檔案找不到或格式錯誤，將無法進行自動分類。")
         return {} # 返回一個空的 dict 更安全
 
+# --- ▼▼▼ 核心修改處 1：新增 update_global_preconditions 函式 ▼▼▼ ---
+def update_global_preconditions(product_type, new_preconditions):
+    """
+    更新 category_rules.json 檔案中的全域前置條件。
+    """
+    if not new_preconditions or not isinstance(new_preconditions, str):
+        return # 如果沒有提供新的條件文字，則不執行任何操作
+
+    rules_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'category_rules.json')
+    
+    try:
+        # 讀取現有的規則
+        with open(rules_path, 'r', encoding='utf-8') as f:
+            rules_data = json.load(f)
+        
+        # 如果 'global_preconditions' 鍵不存在，就建立它
+        if 'global_preconditions' not in rules_data:
+            rules_data['global_preconditions'] = {}
+            
+        # 更新或新增指定產品類型的前置條件
+        rules_data['global_preconditions'][product_type] = new_preconditions.strip()
+        
+        # 將更新後的內容寫回檔案
+        with open(rules_path, 'w', encoding='utf-8') as f:
+            json.dump(rules_data, f, ensure_ascii=False, indent=2)
+            
+    except Exception as e:
+        print(f"錯誤：更新全域前置條件失敗 - {e}")
+# --- ▲▲▲ 修改結束 ▲▲▲ ---
+
+
 def categorize_case(case_data, product_type):
     """
     根據載入的規則與指定的產品別，
     比對測試案例的內容並回傳最精確的分類。
     """
-    # ★★★ 核心修正點 1: 在函式內部呼叫，確保每次都讀取最新檔案 ★★★
     CATEGORY_RULES = load_category_rules()
     
-    rules_for_product = CATEGORY_RULES.get(product_type, [])
+    rules_for_product = CATEGORY_RULES.get(product_type)
     if not rules_for_product:
         return "其他", "未分類"
 
@@ -53,11 +83,18 @@ def categorize_case(case_data, product_type):
         f"{case_data.get('測試步驟', '')} "
         f"{case_data.get('預期結果', '')} "
         f"{case_data.get('category', '')}"
-    )
+    ).lower()
     
-    for rule in rules_for_product:
-        for keyword in rule['keywords']:
-            if keyword in text_to_check:
-                return rule['main_category'], rule['sub_category']
+    if isinstance(rules_for_product, list) and rules_for_product and isinstance(rules_for_product[0], str):
+        for keyword in rules_for_product:
+            if keyword.lower() in text_to_check:
+                return product_type, None
+        return product_type, '未分類'
+
+    if isinstance(rules_for_product, list) and rules_for_product and isinstance(rules_for_product[0], dict):
+        for rule in rules_for_product:
+            for keyword in rule['keywords']:
+                if keyword.lower() in text_to_check:
+                    return rule['main_category'], rule['sub_category']
             
     return "其他", "未分類"

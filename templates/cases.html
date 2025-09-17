@@ -30,21 +30,30 @@
                     </a>
                     <ul class="sub-menu">
                         {% for main_group, sub_groups in main_categories.items()|sort %}
-                             <li class="parent {% if product == selected_product and main_group == selected_main_category %}active open{% endif %}">
-                                <a href="{{ url_for('index', product=product, main_category=main_group) }}">
-                                    {{ main_group.replace('功能', '') }}
-                                </a>
-                                <ul class="sub-menu">
-                                    {% for sub in sub_groups|sort %}
-                                        <li>
-                                            <a href="{{ url_for('index', product=product, main_category=main_group, sub_category=sub) }}"
-                                               class="{{ 'active-filter' if product == selected_product and main_group == selected_main_category and sub == selected_sub_category }}">
-                                                 {{ sub }}
-                                            </a>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </li>
+                            {% if sub_groups %}
+                                <li class="parent {% if product == selected_product and main_group == selected_main_category %}active open{% endif %}">
+                                    <a href="{{ url_for('index', product=product, main_category=main_group) }}">
+                                        {{ main_group.replace('功能', '') }}
+                                    </a>
+                                    <ul class="sub-menu">
+                                        {% for sub in sub_groups|sort %}
+                                            <li>
+                                                <a href="{{ url_for('index', product=product, main_category=main_group, sub_category=sub) }}"
+                                                   class="{{ 'active-filter' if product == selected_product and main_group == selected_main_category and sub == selected_sub_category }}">
+                                                     {{ sub }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </li>
+                            {% else %}
+                                <li>
+                                    <a href="{{ url_for('index', product=product, main_category=main_group) }}"
+                                       class="{{ 'active-filter' if product == selected_product and main_group == selected_main_category }}">
+                                        {{ main_group }}
+                                    </a>
+                                </li>
+                            {% endif %}
                         {% endfor %}
                     </ul>
                 </li>
@@ -70,7 +79,13 @@
     {% if global_precondition %}
     <div class="alert alert-info" role="alert">
         <h6 class="alert-heading">
-            <i class="bi bi-info-circle-fill me-2"></i>{{ selected_product }} - 全域前置條件
+            <i class="bi bi-info-circle-fill me-2"></i>
+            {% if selected_main_category and (selected_main_category.startswith('Spec#') or selected_main_category.startswith('Tests#')) %}
+                {{ selected_main_category }}
+            {% else %}
+                {{ selected_product }}
+            {% endif %}
+            - 全域前置條件
         </h6>
         <hr>
         <pre class="mb-0" style="font-family: inherit; font-size: inherit;">{{ global_precondition }}</pre>
@@ -82,40 +97,39 @@
         <div class="sticky-bar">
             <div class="card">
                 <div class="card-body">
-                    <div class="row g-3 align-items-center mb-3">
-                        <div class="col-auto">
-                            <label class="form-label mb-0"><strong><i class="bi bi-flag-fill me-1"></i>狀態：</strong></label>
-                        </div>
-                        <div class="col">
-                            <div class="btn-group btn-group-sm" role="group">
-                                {% for status in status_options %}
-                                <a href="#" class="btn btn-outline-secondary filter-btn status-filter {% if status in selected_statuses %}active{% endif %}" data-filter-type="status" data-filter-value="{{ status }}">
-                                    {{ status }}
-                                </a>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <label for="tag-filter-select" class="form-label mb-0"><strong><i class="bi bi-tags-fill me-1"></i>標籤：</strong></label>
-                        </div>
-                        <div class="col-md-4">
-                            <select id="tag-filter-select" class="form-select form-select-sm" multiple>
-                                {% for tag in all_tags %}
-                                    <option value="{{ tag.name }}" {% if tag.name in selected_tags %}selected{% endif %}>{{ tag.name }}</option>
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <select class="form-control" id="smart-search-select" multiple="multiple">
+                                {% for part in query_string.split(' ') if part %}
+                                    <option selected="selected">{{ part }}</option>
                                 {% endfor %}
                             </select>
+                            <button class="btn btn-info" type="button" id="smart-search-btn">
+                                <i class="bi bi-search"></i> 搜尋
+                            </button>
+                        </div>
+                        <div class="form-text mt-2">
+                             <a tabindex="0"
+                               role="button"
+                               class="text-decoration-none"
+                               data-bs-toggle="popover"
+                               data-bs-trigger="hover focus"
+                               data-bs-title="智慧搜尋語法說明"
+                               data-bs-html="true"
+                               data-bs-content="<ul class='list-unstyled mb-0'>
+                                                 <li><strong class='text-primary'>1. 搜尋案例:</strong> 直接輸入關鍵字 (例如: <code>登入失敗</code>)</li>
+                                                 <li><strong class='text-primary'>2. 搜尋標籤:</strong> 加上 <code>#</code> 符號 (例如: <code>#regression</code>)</li>
+                                                 <li><strong class='text-primary'>3. 搜尋狀態:</strong> 加上 <code>status:</code> (例如: <code>status:通過</code>)</li>
+                                               </ul>
+                                               <hr class='my-2'>
+                                               <small>輸入條件後按 <strong>空白鍵</strong> 或 <strong>Enter</strong> 即可建立區塊。</small>">
+                                <i class="bi bi-question-circle-fill"></i>
+                                <span>搜尋語法說明</span>
+                            </a>
                         </div>
                     </div>
-
                     <hr>
-
                     <div class="d-flex justify-content-between align-items-center gap-3">
-                        <div class="input-group" style="max-width: 400px;">
-                            <span class="input-group-text">搜尋</span>
-                            <input type="search" id="search-input" name="search_term" class="form-control" placeholder="輸入關鍵字..." value="{{ search_term or '' }}">
-                            <button type="button" id="search-btn" class="btn btn-info">搜尋</button>
-                        </div>
-                        
                         <div class="input-group" style="max-width: 400px;">
                             <span class="input-group-text">批量標籤</span>
                             <select id="bulk-tag-select" class="form-select">
@@ -126,7 +140,6 @@
                             </select>
                             <button type="button" id="bulk-add-tag-btn" class="btn btn-primary">套用</button>
                         </div>
-
                         <div class="d-flex align-items-center gap-2">
                             <button type="button" id="bulk-delete-btn" class="btn btn-danger">
                                 <i class="bi bi-trash-fill"></i> 批量刪除
@@ -156,6 +169,7 @@
         <input type="hidden" name="sub_category" value="{{ selected_sub_category or '' }}">
         <input type="hidden" name="page" value="{{ pagination.page or 1 }}">
         <input type="hidden" name="per_page" value="{{ per_page or 50 }}">
+        <input type="hidden" name="q" value="{{ query_string or '' }}">
         
         <div class="table-responsive">
             <table class="table table-hover table-bordered caption-top table-fixed-layout">
@@ -173,18 +187,34 @@
                 <tbody id="case-table-body">
                 {% for case in cases %}
                         <tr class="expandable-row" 
-                            data-bs-target="#collapse-{{ case.id }}" 
-                            style="cursor: pointer;"
-                            hx-get="{{ url_for('get_case_details', id=case.id) }}"
-                            hx-target="#details-content-{{ case.id }}"
-                            hx-swap="innerHTML"
-                            hx-trigger="click once">
+                            data-bs-target="#collapse-{{ case.id }}"
+                            data-case-id="{{ case.id }}"
+                            style="cursor: pointer;">
                             <td class="text-center align-middle">
                                 <input class="form-check-input case-checkbox" type="checkbox" name="case_ids" value="{{ case.id }}">
                             </td>
                             <td>
                                 {{ case.case_id }}
-                                {% include 'partials/_tags_display.html' %}
+                                <div class="tag-list mt-1">
+                                    {% for tag in case.tags|sort(attribute='name') %}
+                                        {% set query_params = {
+                                            'case_id': case.id,
+                                            'tag_name': tag.name,
+                                            'q': query_string, 
+                                            'per_page': per_page, 
+                                            'page': pagination.page,
+                                            'product': selected_product, 
+                                            'main_category': selected_main_category, 
+                                            'sub_category': selected_sub_category
+                                        } %}
+                                        <a href="{{ url_for('delete_tag') }}?{{ query_params|urlencode }}"
+                                           class="badge bg-secondary text-decoration-none me-1 tag-item"
+                                           title="點擊以刪除標籤"
+                                           onclick="return confirm('您確定要刪除標籤 \'{{ tag.name }}\' 嗎？');">
+                                            {{ tag.name }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
                             </td>
                             <td>{{ case.test_item }}</td>
                             <td>
@@ -218,11 +248,7 @@
                         </tr>
                         
                         <tr id="collapse-{{ case.id }}" class="collapse">
-                             <td colspan="6" id="details-content-{{ case.id }}" style="background-color: #f8f9fa; padding: 20px;"
-                                hx-get="{{ url_for('get_case_details', id=case.id) }}"
-                                hx-swap="innerHTML"
-                                hx-trigger="refreshDetails-{{ case.id }} from:body">
-                                
+                             <td colspan="6" id="details-content-{{ case.id }}" style="background-color: #f8f9fa; padding: 20px;">
                                 <div class="p-3 text-center">
                                     <div class="spinner-border spinner-border-sm" role="status">
                                         <span class="visually-hidden">Loading...</span>
@@ -241,10 +267,17 @@
     </form> 
 
     {% if pagination and pagination.pages > 1 %}
+    {% set base_params = {
+        'q': query_string, 
+        'per_page': per_page,
+        'product': selected_product, 
+        'main_category': selected_main_category, 
+        'sub_category': selected_sub_category
+    } %}
     <nav aria-label="Page navigation">
         <ul class="pagination justify-content-center">
             <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('index', page=pagination.prev_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page, status=selected_statuses, tag=selected_tags, search_term=search_term) }}">&laquo;</a>
+                <a class="page-link" href="{{ url_for('index', page=pagination.prev_num, **base_params) }}">&laquo;</a>
             </li>
             
             {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
@@ -255,7 +288,7 @@
                         </li>
                     {% else %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('index', page=page_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page, status=selected_statuses, tag=selected_tags, search_term=search_term) }}">{{ page_num }}</a>
+                            <a class="page-link" href="{{ url_for('index', page=page_num, **base_params) }}">{{ page_num }}</a>
                         </li>
                     {% endif %}
                 {% else %}
@@ -264,7 +297,7 @@
             {% endfor %}
 
             <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('index', page=pagination.next_num, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category, per_page=per_page, status=selected_statuses, tag=selected_tags, search_term=search_term) }}">&raquo;</a>
+                <a class="page-link" href="{{ url_for('index', page=pagination.next_num, **base_params) }}">&raquo;</a>
             </li>
         </ul>
     </nav>
@@ -277,102 +310,88 @@
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        
+        // ... (其他 JavaScript 保持不變) ...
         const tableBody = document.getElementById('case-table-body');
         if (tableBody) {
             tableBody.addEventListener('click', function(e) {
-                // 定義所有不該觸發展開的互動元件
                 const interactiveElement = e.target.closest(
-                    'input, select, textarea, a, button, .dropdown'
+                    'a, button, input, select, .dropdown, .case-checkbox'
                 );
-                
-                // 如果點擊的是互動元件，就直接結束，讓 HTMX 或瀏覽器去處理
                 if (interactiveElement) {
-                    return; 
+                    return;
                 }
-
-                // 如果點擊的不是互動元件，就找到外層的可展開行
                 const expandableRow = e.target.closest('.expandable-row');
                 if (expandableRow) {
-                    // 找到這一行對應的、要被展開的內容
                     const targetId = expandableRow.dataset.bsTarget;
                     const collapseElement = document.querySelector(targetId);
-                    
                     if (collapseElement) {
-                        // 手動觸發 Bootstrap 的展開/收合功能
                         const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
                         bsCollapse.toggle();
+                        
+                        const detailsContent = document.querySelector(targetId + ' > td');
+                        if (!detailsContent.hasAttribute('data-loaded')) {
+                            const caseId = expandableRow.dataset.caseId;
+                            const detailUrl = "{{ url_for('get_case_details', id=0) }}".replace('0', caseId);
+                            
+                            htmx.ajax('GET', detailUrl, {target: detailsContent, swap: 'innerHTML'}).then(() => {
+                                detailsContent.setAttribute('data-loaded', 'true');
+                            });
+                        }
                     }
                 }
             });
         }
-        
-        // --- 以下是您原本的功能性 JavaScript (保持不變) ---
-        $('#bulk-tag-select').select2({
+
+        $('#smart-search-select').select2({
             theme: 'bootstrap-5',
-            placeholder: '選擇或輸入新標籤...',
-            tags: true,
-            tokenSeparators: [',', ' ']
+            tags: true, 
+            placeholder: '輸入條件後按 Enter 或空白鍵建立區塊...',
+            tokenSeparators: [' ', ',']
         });
-
-        const form = document.getElementById('bulk-action-form');
-        const addTagBtn = document.getElementById('bulk-add-tag-btn');
-        const deleteBtn = document.getElementById('bulk-delete-btn');
-
-        if (form && addTagBtn && deleteBtn) {
-            addTagBtn.addEventListener('click', function() {
-                const tagValue = $('#bulk-tag-select').val(); 
-                if (!tagValue) {
-                    alert('請選擇或輸入要新增的標籤！');
-                    return;
-                }
-                let hiddenInput = form.querySelector('input[name="new_tag"]');
-                if (!hiddenInput) {
-                    hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = 'new_tag';
-                    form.appendChild(hiddenInput);
-                }
-                hiddenInput.value = tagValue;
-                form.action = "{{ url_for('bulk_add_tag') }}";
-                form.submit();
-            });
-
-            deleteBtn.addEventListener('click', function() {
-                const checkedBoxes = form.querySelectorAll('input[name="case_ids"]:checked');
-                if (checkedBoxes.length === 0) {
-                    alert('請至少選擇一個要刪除的案例！');
-                    return;
-                }
-                if (confirm('您確定要刪除所選的 ' + checkedBoxes.length + ' 個案例嗎？此操作無法復原。')) {
-                    form.action = "{{ url_for('bulk_delete') }}";
-                    form.submit();
-                }
-            });
-        }
-        
-        const searchInput = document.getElementById('search-input');
-        const searchBtn = document.getElementById('search-btn');
-        if (searchInput && searchBtn) {
+        const searchBtn = document.getElementById('smart-search-btn');
+        if (searchBtn) {
             const performSearch = function() {
-                const searchTerm = searchInput.value.trim();
+                const selectedData = $('#smart-search-select').val();
+                const queryString = selectedData ? selectedData.join(' ') : '';
                 const currentUrl = new URL(window.location.href);
-                if (searchTerm) {
-                    currentUrl.searchParams.set('search_term', searchTerm);
+                if (queryString) {
+                    currentUrl.searchParams.set('q', queryString);
                 } else {
-                    currentUrl.searchParams.delete('search_term');
+                    currentUrl.searchParams.delete('q');
                 }
                 currentUrl.searchParams.set('page', '1');
                 window.location.href = currentUrl.href;
             };
             searchBtn.addEventListener('click', performSearch);
-            searchInput.addEventListener('keyup', function(event) {
+            $('#smart-search-select').next('.select2-container').on('keyup', function(event) {
                 if (event.key === 'Enter') {
-                    performSearch();
+                    setTimeout(performSearch, 50);
                 }
             });
         }
-        
+        $('#bulk-tag-select').select2({ theme: 'bootstrap-5', placeholder: '選擇或輸入新標籤...', tags: true, tokenSeparators: [',', ' ']});
+        const bulkForm = document.getElementById('bulk-action-form');
+        const addTagBtn = document.getElementById('bulk-add-tag-btn');
+        const deleteBtn = document.getElementById('bulk-delete-btn');
+        if (bulkForm && addTagBtn && deleteBtn) {
+            addTagBtn.addEventListener('click', function() {
+                const tagValue = $('#bulk-tag-select').val(); 
+                if (!tagValue) { alert('請選擇或輸入要新增的標籤！'); return; }
+                let hiddenInput = bulkForm.querySelector('input[name="new_tag"]');
+                if (!hiddenInput) { hiddenInput = document.createElement('input'); hiddenInput.type = 'hidden'; hiddenInput.name = 'new_tag'; bulkForm.appendChild(hiddenInput); }
+                hiddenInput.value = tagValue;
+                bulkForm.action = "{{ url_for('bulk_add_tag') }}";
+                bulkForm.submit();
+            });
+            deleteBtn.addEventListener('click', function() {
+                const checkedBoxes = bulkForm.querySelectorAll('input[name="case_ids"]:checked');
+                if (checkedBoxes.length === 0) { alert('請至少選擇一個要刪除的案例！'); return; }
+                if (confirm('您確定要刪除所選的 ' + checkedBoxes.length + ' 個案例嗎？此操作無法復原。')) {
+                    bulkForm.action = "{{ url_for('bulk_delete') }}";
+                    bulkForm.submit();
+                }
+            });
+        }
         const perPageSelect = document.getElementById('per-page-select');
         if (perPageSelect) {
             perPageSelect.addEventListener('change', function() {
@@ -383,37 +402,6 @@
                 window.location.href = currentUrl.href;
             });
         }
-        
-        const statusFilterBtns = document.querySelectorAll('.status-filter');
-        statusFilterBtns.forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const currentUrl = new URL(window.location.href);
-                const filterValue = this.dataset.filterValue;
-                if (this.classList.contains('active')) {
-                    currentUrl.searchParams.delete('status');
-                } else {
-                    currentUrl.searchParams.set('status', filterValue);
-                }
-                currentUrl.searchParams.set('page', '1');
-                window.location.href = currentUrl.href;
-            });
-        });
-
-        $('#tag-filter-select').select2({
-            theme: 'bootstrap-5',
-            placeholder: '選擇一或多個標籤...'
-        }).on('change', function() {
-            const selectedTags = $(this).val();
-            const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.delete('tag');
-            selectedTags.forEach(tag => {
-                currentUrl.searchParams.append('tag', tag);
-            });
-            currentUrl.searchParams.set('page', '1');
-            window.location.href = currentUrl.href;
-        });
-
         const selectAllCheckbox = document.getElementById('select-all-checkbox');
         if (selectAllCheckbox) {
             selectAllCheckbox.addEventListener('click', function(event) {
@@ -423,60 +411,56 @@
             });
         }
         
+        // --- ▼▼▼ 核心修改處 4：重構「全部展開/收合」的 JavaScript ▼▼▼ ---
         const toggleAllBtn = document.getElementById('toggle-all-btn');
-        const expandableRows = Array.from(document.querySelectorAll('.expandable-row')); 
-        if (toggleAllBtn && expandableRows.length > 0) {
-            let isProcessing = false;
-            function processInBatches(rows, action, batchSize = 20) {
-                if (isProcessing) return; 
-                isProcessing = true;
-                toggleAllBtn.disabled = true;
-                let index = 0;
-                function nextBatch() {
-                    const batch = rows.slice(index, index + batchSize);
-                    if (batch.length === 0) {
-                        isProcessing = false; 
-                        toggleAllBtn.disabled = false;
-                        return;
-                    }
-                    batch.forEach(row => {
-                        const targetId = row.dataset.bsTarget;
-                        const collapseEl = document.querySelector(targetId);
-                        if (collapseEl) {
-                            const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
-                            if (action === 'show') {
-                                htmx.trigger(row, 'click');
-                                bsCollapse.show();
-                            } else {
-                                bsCollapse.hide();
-                            }
-                        }
-                    });
-                    index += batchSize;
-                    requestAnimationFrame(nextBatch);
-                }
-                nextBatch();
-            }
-            
+        if (toggleAllBtn) {
             toggleAllBtn.addEventListener('click', function() {
-                const currentState = this.dataset.state;
+                const isCollapsed = this.dataset.state === 'collapsed';
+                const action = isCollapsed ? 'show' : 'hide';
+                const expandableRows = document.querySelectorAll('.expandable-row');
+
+                expandableRows.forEach(row => {
+                    const targetId = row.dataset.bsTarget;
+                    const collapseElement = document.querySelector(targetId);
+                    const detailsContent = document.querySelector(targetId + ' > td');
+                    
+                    if (collapseElement) {
+                        const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
+                        
+                        if (action === 'show') {
+                            if (!detailsContent.hasAttribute('data-loaded')) {
+                                const caseId = row.dataset.caseId;
+                                const detailUrl = "{{ url_for('get_case_details', id=0) }}".replace('0', caseId);
+                                htmx.ajax('GET', detailUrl, {target: detailsContent, swap: 'innerHTML'}).then(() => {
+                                    detailsContent.setAttribute('data-loaded', 'true');
+                                });
+                            }
+                            bsCollapse.show();
+                        } else {
+                            bsCollapse.hide();
+                        }
+                    }
+                });
+
                 const icon = this.querySelector('i');
                 const text = this.querySelector('span');
-                if (currentState === 'collapsed') {
-                    processInBatches(expandableRows, 'show');
-                    this.dataset.state = 'expanded';
+                this.dataset.state = isCollapsed ? 'expanded' : 'collapsed';
+                if (isCollapsed) {
                     icon.classList.remove('bi-arrows-expand');
                     icon.classList.add('bi-arrows-collapse');
                     text.textContent = '全部收合';
                 } else {
-                    processInBatches(expandableRows, 'hide');
-                    this.dataset.state = 'collapsed';
                     icon.classList.remove('bi-arrows-collapse');
                     icon.classList.add('bi-arrows-expand');
                     text.textContent = '全部展開';
                 }
             });
         }
+        
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+          return new bootstrap.Popover(popoverTriggerEl)
+        })
     });
     </script>
 {% endblock %}

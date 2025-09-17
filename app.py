@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 import io
+import re
 from types import SimpleNamespace
 from urllib.parse import quote 
 from flask import (Flask, render_template, request, redirect, url_for, 
@@ -10,13 +11,12 @@ from sqlalchemy import func, or_
 from werkzeug.utils import secure_filename
 import uuid
 
-# 從我們的新檔案中匯入所需物件
 from extensions import db, migrate 
 from models import TestCase, Tag, Attachment
 from services import process_excel_file
-from utils import categorize_case, process_tags, load_category_rules
+from utils import categorize_case, process_tags, load_category_rules, update_global_preconditions
 
-# --- 1. 初始化與設定 ---
+# --- 初始化與設定 (保持不變) ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 ATTACHMENT_FOLDER = os.path.join(UPLOAD_FOLDER, 'attachments') 
@@ -41,7 +41,6 @@ with app.app_context():
     if not os.path.exists(ATTACHMENT_FOLDER):
         os.makedirs(ATTACHMENT_FOLDER)
 
-# --- 路由 (Web 頁面邏輯) ---
 
 @app.context_processor
 def inject_status_options():
@@ -50,6 +49,7 @@ def inject_status_options():
 
 @app.route('/dashboard')
 def dashboard():
+    # ... (儀表板邏輯保持不變) ...
     status_distribution = db.session.query(
         TestCase.status,
         func.count(TestCase.status)
@@ -103,37 +103,43 @@ def dashboard():
         hide_sidebar=True
     )
 
+
 @app.route('/')
 def index():
+    # ... (主頁面邏輯保持不變) ...
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     if per_page not in [10, 20, 30, 40, 50]:
         per_page = 50
-    
-    selected_statuses = request.args.getlist('status')
-    selected_tags = request.args.getlist('tag')
-    search_term = request.args.get('search_term', '').strip()
 
-    all_cases_for_tree = db.session.query(TestCase.product_type, TestCase.main_category, TestCase.sub_category).distinct().all()
-    tree_data = {}
-    for prod, main_cat, sub_cat in all_cases_for_tree:
-        if not prod: continue
-        if prod not in tree_data: tree_data[prod] = {}
-        if main_cat and main_cat not in tree_data[prod]: tree_data[prod][main_cat] = []
-        if main_cat and sub_cat and sub_cat not in tree_data[prod][main_cat]:
-            tree_data[prod][main_cat].append(sub_cat)
+    query_string = request.args.get('q', '').strip()
     
+    search_terms = []
+    selected_statuses = []
+    selected_tags = []
+
+    if query_string:
+        pattern = r'"([^"]*)"|(\S+)'
+        parts = re.findall(pattern, query_string)
+        for part_tuple in parts:
+            part = part_tuple[0] or part_tuple[1]
+            if part.startswith('status:'):
+                status = part.split(':', 1)[1]
+                if status:
+                    selected_statuses.append(status)
+            elif part.startswith(('tag:', '#')):
+                tag = part.split(':', 1)[-1].lstrip('#')
+                if tag:
+                    selected_tags.append(tag)
+            else:
+                search_terms.append(part)
+
+    query = TestCase.query
+
     selected_product = request.args.get('product')
     selected_main_category = request.args.get('main_category')
     selected_sub_category = request.args.get('sub_category')
 
-    global_precondition = None
-    if selected_product:
-        CATEGORY_RULES = load_category_rules()
-        global_preconditions = CATEGORY_RULES.get('global_preconditions', {})
-        global_precondition = global_preconditions.get(selected_product)
-
-    query = TestCase.query
     if selected_product:
         query = query.filter_by(product_type=selected_product)
     if selected_main_category:
@@ -143,21 +149,45 @@ def index():
 
     if selected_statuses:
         query = query.filter(TestCase.status.in_(selected_statuses))
+    
     if selected_tags:
         for tag_name in selected_tags:
             query = query.filter(TestCase.tags.any(name=tag_name))
 
-    if search_term:
-        search_filter = or_(
-            TestCase.case_id.ilike(f'%{search_term}%'),
-            TestCase.test_item.ilike(f'%{search_term}%'),
-            TestCase.test_purpose.ilike(f'%{search_term}%'),
-            TestCase.preconditions.ilike(f'%{search_term}%'),
-            TestCase.test_steps.ilike(f'%{search_term}%'),
-            TestCase.expected_result.ilike(f'%{search_term}%'),
-            TestCase.notes.ilike(f'%{search_term}%')
-        )
-        query = query.filter(search_filter)
+    if search_terms:
+        for term in search_terms:
+            search_filter = or_(
+                TestCase.case_id.ilike(f'%{term}%'),
+                TestCase.test_item.ilike(f'%{term}%')
+            )
+            query = query.filter(search_filter)
+
+    all_cases_for_tree = db.session.query(TestCase.product_type, TestCase.main_category, TestCase.sub_category).distinct().all()
+    tree_data = {}
+    for prod, main_cat, sub_cat in all_cases_for_tree:
+        prod = prod.strip() if prod else None
+        main_cat = main_cat.strip() if main_cat else None
+        sub_cat = sub_cat.strip() if sub_cat else None
+        if not prod:
+            continue
+        if prod not in tree_data:
+            tree_data[prod] = {}
+        if main_cat:
+            if main_cat not in tree_data[prod]:
+                tree_data[prod][main_cat] = [] 
+            if sub_cat and sub_cat not in tree_data[prod][main_cat]:
+                tree_data[prod][main_cat].append(sub_cat)
+    
+    global_precondition = None
+    CATEGORY_RULES = load_category_rules()
+    global_preconditions = CATEGORY_RULES.get('global_preconditions', {})
+    
+    if selected_sub_category:
+        global_precondition = global_preconditions.get(selected_sub_category)
+    if not global_precondition and selected_main_category:
+        global_precondition = global_preconditions.get(selected_main_category)
+    if not global_precondition and selected_product:
+        global_precondition = global_preconditions.get(selected_product)
 
     pagination = query.order_by(TestCase.case_id).paginate(page=page, per_page=per_page, error_out=False)
     cases_to_display = pagination.items
@@ -176,8 +206,39 @@ def index():
                            all_tags=all_tags,
                            selected_tags=selected_tags,
                            selected_statuses=selected_statuses,
-                           search_term=search_term)
+                           query_string=query_string)
 
+# --- ▼▼▼ 核心修改處：重寫 delete_tag 路由 ▼▼▼ ---
+@app.route('/delete-tag')
+def delete_tag():
+    # 從查詢參數中獲取 case_id 和 tag_name
+    case_id = request.args.get('case_id', type=int)
+    tag_name = request.args.get('tag_name')
+
+    # 複製一份原始的查詢參數，用於稍後的重新導向
+    redirect_args = request.args.to_dict()
+    # 從中移除我們這次操作用的參數
+    redirect_args.pop('case_id', None)
+    redirect_args.pop('tag_name', None)
+
+    if case_id and tag_name:
+        case = TestCase.query.get_or_404(case_id)
+        tag_to_delete = Tag.query.filter_by(name=tag_name).first()
+
+        if tag_to_delete and tag_to_delete in case.tags:
+            case.tags.remove(tag_to_delete)
+            db.session.commit()
+            flash(f"已成功刪除標籤 '{tag_name}'", 'success')
+        else:
+            flash(f"找不到要刪除的標籤 '{tag_name}'", 'warning')
+    else:
+        flash("刪除標籤時缺少必要參數。", 'danger')
+    
+    # 重新導向回主頁面，並帶上所有原本的篩選/分頁參數
+    return redirect(url_for('index', **redirect_args))
+# --- ▲▲▲ 修改結束 ▲▲▲ ---
+
+# ... (其他所有路由 add, edit, bulk_actions 等都保持不變) ...
 @app.route('/add', methods=['GET', 'POST'])
 def add_case():
     if request.method == 'POST':
@@ -257,17 +318,6 @@ def display_status_result(id):
     case = TestCase.query.get_or_404(id)
     return render_template('partials/_status_result_display.html', case=case)
 
-@app.route('/delete-tag/<int:id>', methods=['POST'])
-def delete_tag(id):
-    case = TestCase.query.get_or_404(id)
-    tag_name_to_delete = request.form.get('tag')
-    if tag_name_to_delete:
-        tag_to_delete = Tag.query.filter_by(name=tag_name_to_delete).first()
-        if tag_to_delete and tag_to_delete in case.tags:
-            case.tags.remove(tag_to_delete)
-            db.session.commit()
-    return render_template('partials/_tags_display.html', case=case)
-
 @app.route('/bulk-add-tag', methods=['POST'])
 def bulk_add_tag():
     case_ids = request.form.getlist('case_ids')
@@ -305,7 +355,6 @@ def bulk_delete():
     cases_to_delete = TestCase.query.filter(TestCase.id.in_(case_ids)).all()
     
     for case in cases_to_delete:
-        # 刪除關聯的附件檔案
         for attachment in case.attachments:
             try:
                 os.remove(os.path.join(app.config['ATTACHMENT_FOLDER'], attachment.filepath))
@@ -381,23 +430,27 @@ def delete_attachment(attachment_id):
 @app.route('/case-details/<int:id>')
 def get_case_details(id):
     case = TestCase.query.get_or_404(id)
-    return render_template('partials/_case_details_content.html', case=case, render_manual_list=render_manual_list_in_template)
-
-def render_manual_list_in_template(text_block):
-    lines = [line.strip().lstrip('0123456789. ') for line in (text_block or "").split('\n') if line.strip()]
-    html = '<div class="manual-list">'
-    for i, line in enumerate(lines):
-        html += f'<div class="manual-list-item"><span class="manual-list-number">{i+1}.</span><span class="manual-list-text">{line}</span></div>'
-    html += '</div>'
-    return html
+    return render_template('partials/_case_details_content.html', case=case)
 
 @app.context_processor
 def utility_processor():
+    def render_manual_list_in_template(text_block):
+        lines = [line.strip().lstrip('0123456789. ') for line in (text_block or "").split('\n') if line.strip()]
+        html = '<div class="manual-list">'
+        for i, line in enumerate(lines):
+            html += f'<div class="manual-list-item"><span class="manual-list-number">{i+1}.</span><span class="manual-list-text">{line}</span></div>'
+        html += '</div>'
+        return html
     return dict(render_manual_list=render_manual_list_in_template)
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_page():
     if request.method == 'POST':
+        selected_product_type = request.form.get('product_type')
+        if not selected_product_type:
+            flash('請務必選擇要匯入的產品類型！', 'danger')
+            return redirect(request.url)
+            
         uploaded_files = request.files.getlist('files')
         if not uploaded_files or uploaded_files[0].filename == '':
             flash('未選擇任何檔案', 'warning')
@@ -410,7 +463,7 @@ def upload_page():
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 try:
-                    count = process_excel_file(file.stream, filename)
+                    count = process_excel_file(file.stream, filename, selected_product_type)
                     total_imported_count += count
                 except Exception as e:
                     has_error = True
@@ -419,7 +472,7 @@ def upload_page():
                     break 
 
         if not has_error and total_imported_count > 0:
-             flash(f'所有檔案處理完畢！共成功匯入 {total_imported_count} 筆新案例！', 'success')
+             flash(f'所有檔案處理完畢！共成功匯入 {total_imported_count} 筆新案例到 "{selected_product_type}" 分類中！', 'success')
         elif not has_error and total_imported_count == 0:
             flash('所有檔案處理完畢，但沒有匯入任何新案例 (可能 Case ID 皆已存在)。', 'info')
 
@@ -436,10 +489,23 @@ def export_cases():
     product = request.args.get('product')
     main_category = request.args.get('main_category')
     sub_category = request.args.get('sub_category')
+    query_string = request.args.get('q', '').strip()
     
-    selected_statuses = request.args.getlist('status')
-    selected_tags = request.args.getlist('tag')
-    search_term = request.args.get('search_term', '').strip()
+    search_terms = []
+    selected_statuses = []
+    selected_tags = []
+
+    if query_string:
+        pattern = r'"([^"]*)"|(\S+)'
+        parts = re.findall(pattern, query_string)
+        for part_tuple in parts:
+            part = part_tuple[0] or part_tuple[1]
+            if part.startswith('status:'):
+                selected_statuses.append(part.split(':', 1)[1])
+            elif part.startswith(('tag:', '#')):
+                selected_tags.append(part.split(':', 1)[-1].lstrip('#'))
+            else:
+                search_terms.append(part)
 
     query = TestCase.query
     if product:
@@ -453,12 +519,13 @@ def export_cases():
     if selected_tags:
         for tag_name in selected_tags:
             query = query.filter(TestCase.tags.any(name=tag_name))
-    if search_term:
-        search_filter = or_(
-            TestCase.case_id.ilike(f'%{search_term}%'),
-            TestCase.test_item.ilike(f'%{search_term}%')
-        )
-        query = query.filter(search_filter)
+    if search_terms:
+        for term in search_terms:
+            search_filter = or_(
+                TestCase.case_id.ilike(f'%{term}%'),
+                TestCase.test_item.ilike(f'%{term}%')
+            )
+            query = query.filter(search_filter)
 
     cases_to_export = query.order_by(TestCase.case_id).all()
 

@@ -1,78 +1,763 @@
 {
-"global_preconditions": {
+  "global_preconditions": {
     "郵件閘道": "測試環境已部署 Smail v3.24.0 郵件閘道系統，且各項服務皆正常運行。\n\n測試環境的網路連線正常，DNS 解析可正常運作。\n\n已建立至少兩個測試網域 (e.g., test-domain.com, qa-domain.com)。\n\n已建立各層級管理員帳號：\n\n- 系統管理員 (sysadmin@smail.local)\n\n- test-domain.com 的網域管理員 (domainadmin@test-domain.com)\n\n- qa-domain.com 的網域管理員 (domainadmin@qa-domain.com)\n\n在各網域下已建立多個測試使用者帳號 (e.g., user1@test-domain.com, user2@test-domain.com, user1@qa-domain.com)，且帳號為啟用狀態。\n\n測試用的外部郵件帳號 (e.g., external.tester@gmail.com) 已備妥，可用於收發郵件。\n\n測試客戶端已安裝指定的支援瀏覽器 (Chrome, Edge 最新版本)。\n\n所有測試帳號的密碼均為已知。",
-    "郵件歸檔": "測試環境已部署 Smail v3.24.0 郵件歸檔系統，且各項服務皆正常運行。\n\n測試人員已準備好至少一組具備「系統管理者」權限的帳號，以便存取所有管理功能。\n\n測試客戶端使用指定的瀏覽器（建議為 Chrome 或 Edge）訪問 Smail 管理介面。\n\n測試用的郵件來源伺服器（如 POP3/IMAP/EWS Server）已架設完成，並包含多種類型的測試郵件。\n\nSmail 系統中已建立至少一個測試網域（例如： example.com）。"
+    "郵件歸檔": "測試環境已部署 Smail v3.24.0 郵件歸檔系統，且各項服務皆正常運行。\n\n測試人員已準備好至少一組具備「系統管理者」權限的帳號，以便存取所有管理功能。\n\n測試客戶端使用指定的瀏覽器（建議為 Chrome 或 Edge）訪問 Smail 管理介面。\n\n測試用的郵件來源伺服器（如 POP3/IMAP/EWS Server）已架設完成，並包含多種類型的測試郵件。\n\nSmail 系統中已建立至少一個測試網域（例如： example.com）。",
+    "Smail-Spec": "1. Smail 郵件閘道 v3.24.0 已成功安裝並可正常運行。\n2. 測試環境中至少存在兩個獨立的網域（例如：`domain-a.com`, `domain-b.com`）。\n3. 已建立以下測試帳號：\n    - `sysadmin@smail.local`：具備完整權限的系統管理者。\n    - `domain-a-admin@domain-a.com`：`domain-a.com` 的網域管理者，已被授予「垃圾郵件特徵」的管理功能權限。\n    - `domain-b-admin@domain-b.com`：`domain-b.com` 的網域管理者，**未被**授予「垃圾郵件特徵」的管理功能權限。\n    - `group-admin@domain-a.com`：`domain-a.com` 的群組管理者，無網域層級管理權限。\n4. 測試用瀏覽器（建議為 Chrome 或 Edge）已安裝，並可清除快取與 Cookie。",
+    "Spec#454": "1. Smail 系統已成功安裝並可正常運行 (建議版本 v3.25.0 或以上)。\n2. 測試人員已使用具備「系統管理者」權限的帳號登入 Smail 管理介面。\n3. 測試環境具備上傳與更換 Smail 授權檔案的能力。\n4. 已準備好多份授權檔案，分別包含與不包含本次 spec 調整所涉及的各項新、舊模組，以利測試。",
+    "Spec#608": "1. Smail 郵件閘道 v3.24.0 已成功安裝並可正常運行。\n2. 測試環境中至少存在兩個獨立的網域（例如：`domain-a.com`, `domain-b.com`）。\n3. 已建立以下測試帳號：\n    - `sysadmin@smail.local`：具備完整權限的系統管理者。\n    - `domain-a-admin@domain-a.com`：`domain-a.com` 的網域管理者，已被授予「垃圾郵件特徵」的管理功能權限。\n    - `domain-b-admin@domain-b.com`：`domain-b.com` 的網域管理者，**未被**授予「垃圾郵件特徵」的管理功能權限。\n    - `group-admin@domain-a.com`：`domain-a.com` 的群組管理者，無網域層級管理權限。\n4. 測試用瀏覽器（建議為 Chrome 或 Edge）已安裝，並可清除快取與 Cookie。",
+    "Spec#623": "1. 使用者已成功登入 Smail 管理介面。\n2. 系統中存在多個可供搜尋與下載的郵件，其總大小足以觸發檔案分割機制（例如，總計大於 20GB）。\n3. 系統已建立並啟用以下三種權限的管理者帳號：系統管理者 (System Admin)、網域管理者 (Domain Admin)、群組管理者 (Group Admin)。",
+    "Spec#612": "1. 測試人員已成功登入 Smail 管理介面。\n2. 測試人員的管理者帳號具備「郵件 > 郵件查詢」功能的「查詢及列表」與「查看郵件」權限。\n3. 測試環境的瀏覽器為 Chrome 或 Edge 的最新穩定版本。\n4. 「郵件 > 郵件查詢」頁面中，已存在至少 20 封可供查詢與點擊的郵件，郵件內容包含長短不一的主旨、寄件人、收件人資訊。\n5. 測試前，已清除瀏覽器所有與 Smail 應用程式相關的 Cookie。",
+    "Spec#614": "1. Smail 系統已成功安裝並可正常運行 (v3.24.0 郵件歸檔/郵件閘道版本)。\n2. 系統已完成初始化設定。\n3. 測試環境中存在以下帳號：\n    * 系統管理者 (`sysadmin@example.com`)\n    * 網域管理者 (`domainadmin@example.com`)\n    * 一般使用者 (`user@example.com`)\n4. 系統預設語系已設定為「繁體中文 (zh-TW)」。\n5. 測試前，已由不同身份使用者執行多項操作（如：登入登出、設定變更、郵件查詢、匯入匯出、建立原則等），以確保各類紀錄中已存在足夠的測試資料。\n6. 執行測試的客戶端瀏覽器為 Chrome 或 Edge 的最新穩定版本。",
+    "Spec#616": "1. 測試人員已使用具備「系統」、「網域」或「群組」層級管理權限的帳號成功登入 Smail 管理介面。\n2. 用於測試的管理者帳號，已被指派「來源檢查」的管理功能權限。\n3. 測試環境的 Smail 系統已啟用至少一個測試網域。",
+    "Spec#621": "1. Smail 系統已安裝並運行 v3.24.0 或更高版本。\n2. 測試人員已準備好至少一組可用的 LDAP/LDAPS 伺服器資訊，包含：\n   - 支援無加密連線 (Port 389)。\n   - 支援 STARTTLS (Port 389)。\n   - 支援 SSL/TLS (Port 636)。\n   - 包含一組由受信任 CA 簽發的有效憑證。\n   - 包含一組自簽章 (Self-signed) 或過期的憑證。\n3. 測試人員已具備系統管理者 (System Admin) 與網域管理者 (Domain Admin) 權限的帳號。\n4. Smail 系統中已建立至少一個測試用網域 (e.g., `test.domain`)。",
+    "Spec#604": "1. Smail 系統已安裝並成功啟動，版本為 3.24.0 或以上。\n2. 測試人員已準備好具備以下權限層級的管理者帳號，並可成功登入 Smail 管理介面：\n   - 系統管理者 (System Administrator)\n   - 網域管理者 (Domain Administrator)\n   - 群組管理者 (Group Administrator)\n3. 測試環境具備可修改 DNS 紀錄的網域，或可模擬不同 DNS 查詢結果的工具。\n4. 測試環境具備可發送郵件至 Smail 系統的客戶端工具。",
+    "Spec#618": "1. 測試人員已登入 Smail 管理介面 (http://<your_smail_ip>/admin)。\n2. 測試環境已準備好多個不同配置的 LDAP/LDAPS 伺服器以供測試：\n   - 標準 LDAP 伺服器 (port 389)。\n   - 支援 STARTTLS 的 LDAP 伺服器 (port 389)，包含使用受信任 CA 憑證與自簽章憑證的兩種情境。\n   - 標準 LDAPS 伺服器 (port 636)，包含使用受信任 CA 憑證與自簽章憑證的兩種情境。\n3. 測試人員擁有系統管理者 (System Admin) 與網域管理者 (Domain Admin) 權限的帳號。"
   },
   "郵件閘道": [
-    { "keywords": ["登入", "登出", "切換帳號", "驗證失敗", "忘記密碼"], "main_category": "使用者介面", "sub_category": "登入與登出" },
-    { "keywords": ["收件匣", "寄件備份", "垃圾郵件", "個人信匣", "郵件列表"], "main_category": "使用者介面", "sub_category": "郵件資料夾" },
-    { "keywords": ["搜尋郵件", "進階查詢", "查詢條件", "查詢結果"], "main_category": "使用者介面", "sub_category": "搜尋郵件" },
-    { "keywords": ["偏好設定", "時區", "佈景主題", "登入有效時間", "過濾名單", "允許及封鎖名單"], "main_category": "使用者介面", "sub_category": "偏好設定" },
-    { "keywords": ["事件紀錄", "檢視事件紀錄", "帳號安全歷程"], "main_category": "使用者介面", "sub_category": "事件紀錄" },
-    { "keywords": ["參數設定", "系統環境", "資料保留", "SSL 憑證", "通知信", "郵件解析", "登入管制"], "main_category": "系統功能", "sub_category": "參數設定" },
-    { "keywords": ["紀錄檢視", "使用紀錄", "郵件查看紀錄", "查詢紀錄"], "main_category": "系統功能", "sub_category": "紀錄檢視" },
-    { "keywords": ["系統資訊", "主機名稱", "作業系統", "核心版本", "系統負載"], "main_category": "系統功能", "sub_category": "系統資訊" },
-    { "keywords": ["授權資訊", "授權碼", "授權到期日", "模組授權"], "main_category": "系統功能", "sub_category": "授權資訊" },
-    { "keywords": ["系統更新", "檢查更新", "下載更新檔", "安裝更新"], "main_category": "系統功能", "sub_category": "系統更新" },
-    { "keywords": ["組態鎖定", "解除鎖定", "鎖定中的項目"], "main_category": "系統功能", "sub_category": "組態鎖定" },
-    { "keywords": ["特殊郵件", "索引錯誤", "郵件解析錯誤", "附件解析錯誤", "附件過大"], "main_category": "系統功能", "sub_category": "特殊郵件處理" },
-    { "keywords": ["新增網域", "變更網域", "刪除網域", "內部流向"], "main_category": "網域功能", "sub_category": "網域管理" },
-    { "keywords": ["網域別名", "新增別名", "刪除別名"], "main_category": "網域功能", "sub_category": "別名管理" },
-    { "keywords": ["中繼路由", "SMTP 認證", "預設寄送主機", "閘道架構", "DKIM 簽章"], "main_category": "架構功能", "sub_category": "閘道架構" },
-    { "keywords": ["帳號列表", "新增使用者", "變更使用者", "委派帳號"], "main_category": "帳號功能", "sub_category": "帳號列表" },
-    { "keywords": ["帳號環境", "偏好設定權限", "檢視權限"], "main_category": "帳號功能", "sub_category": "帳號環境" },
-    { "keywords": ["密碼原則", "帳號保護", "密碼複雜度", "帳號鎖定"], "main_category": "帳號功能", "sub_category": "帳號原則設定" },
-    { "keywords": ["管理者帳號", "指派管理者", "管理權限"], "main_category": "帳號功能", "sub_category": "管理者帳號" },
-    { "keywords": ["帳號認證", "本機認證", "LDAP", "POP3", "IMAP"], "main_category": "帳號功能", "sub_category": "帳號認證" },
-    { "keywords": ["帳號同步", "同步設定", "同步來源"], "main_category": "帳號功能", "sub_category": "帳號同步" },
-    { "keywords": ["群組管理", "新增群組", "編輯群組", "群組成員"], "main_category": "群組功能", "sub_category": "群組管理" },
-    { "keywords": ["郵件總管", "過濾規則", "專家模式", "一般模式"], "main_category": "郵件功能", "sub_category": "郵件總管" },
-    { "keywords": ["郵件查詢", "查詢郵件", "暫存檔案"], "main_category": "郵件功能", "sub_category": "郵件查詢" },
-    { "keywords": ["連線封鎖", "阻擋來源IP", "封鎖網域"], "main_category": "過濾功能", "sub_category": "連線封鎖" },
-    { "keywords": ["收件人有效性", "無效收件人比例"], "main_category": "過濾功能", "sub_category": "收件人有效性" },
-    { "keywords": ["來源檢查", "RBL", "SPF", "DKIM", "DMARC"], "main_category": "過濾功能", "sub_category": "來源檢查" },
-    { "keywords": ["允許及封鎖名單", "白名單", "黑名單"], "main_category": "過濾功能", "sub_category": "允許及封鎖名單" },
-    { "keywords": ["垃圾郵件特徵", "攔截強度", "URIBL", "ASRC"], "main_category": "過濾功能", "sub_category": "垃圾郵件特徵" },
-    { "keywords": ["資料特徵設定", "機敏資料", "個資"], "main_category": "過濾功能", "sub_category": "資料特徵設定" },
-    { "keywords": ["垃圾郵件通知", "通知信寄送週期"], "main_category": "過濾功能", "sub_category": "垃圾郵件通知" },
-    { "keywords": ["郵件防毒", "防毒引擎", "中毒郵件"], "main_category": "威脅功能", "sub_category": "郵件防毒" },
-    { "keywords": ["DoS 防禦", "連線頻率", "阻擋DoS攻擊"], "main_category": "威脅功能", "sub_category": "DoS 防禦" },
-    { "keywords": ["威脅郵件特徵", "釣魚網址", "退信攻擊", "ADM"], "main_category": "威脅功能", "sub_category": "威脅郵件特徵" },
-    { "keywords": ["大量發信偵測", "發信威脅"], "main_category": "威脅功能", "sub_category": "大量發信偵測" },
-    { "keywords": ["報表精靈", "報表紀錄", "自訂樣板", "折線圖", "清單"], "main_category": "報表功能", "sub_category": "報表精靈" }
+    {
+      "keywords": [
+        "登入",
+        "登出",
+        "切換帳號",
+        "驗證失敗",
+        "忘記密碼"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "登入與登出"
+    },
+    {
+      "keywords": [
+        "收件匣",
+        "寄件備份",
+        "垃圾郵件",
+        "個人信匣",
+        "郵件列表"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "郵件資料夾"
+    },
+    {
+      "keywords": [
+        "搜尋郵件",
+        "進階查詢",
+        "查詢條件",
+        "查詢結果"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "搜尋郵件"
+    },
+    {
+      "keywords": [
+        "偏好設定",
+        "時區",
+        "佈景主題",
+        "登入有效時間",
+        "過濾名單",
+        "允許及封鎖名單"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "偏好設定"
+    },
+    {
+      "keywords": [
+        "事件紀錄",
+        "檢視事件紀錄",
+        "帳號安全歷程"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "事件紀錄"
+    },
+    {
+      "keywords": [
+        "參數設定",
+        "系統環境",
+        "資料保留",
+        "SSL 憑證",
+        "通知信",
+        "郵件解析",
+        "登入管制"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "參數設定"
+    },
+    {
+      "keywords": [
+        "紀錄檢視",
+        "使用紀錄",
+        "郵件查看紀錄",
+        "查詢紀錄"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "紀錄檢視"
+    },
+    {
+      "keywords": [
+        "系統資訊",
+        "主機名稱",
+        "作業系統",
+        "核心版本",
+        "系統負載"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "系統資訊"
+    },
+    {
+      "keywords": [
+        "授權資訊",
+        "授權碼",
+        "授權到期日",
+        "模組授權"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "授權資訊"
+    },
+    {
+      "keywords": [
+        "系統更新",
+        "檢查更新",
+        "下載更新檔",
+        "安裝更新"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "系統更新"
+    },
+    {
+      "keywords": [
+        "組態鎖定",
+        "解除鎖定",
+        "鎖定中的項目"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "組態鎖定"
+    },
+    {
+      "keywords": [
+        "特殊郵件",
+        "索引錯誤",
+        "郵件解析錯誤",
+        "附件解析錯誤",
+        "附件過大"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "特殊郵件處理"
+    },
+    {
+      "keywords": [
+        "新增網域",
+        "變更網域",
+        "刪除網域",
+        "內部流向"
+      ],
+      "main_category": "網域功能",
+      "sub_category": "網域管理"
+    },
+    {
+      "keywords": [
+        "網域別名",
+        "新增別名",
+        "刪除別名"
+      ],
+      "main_category": "網域功能",
+      "sub_category": "別名管理"
+    },
+    {
+      "keywords": [
+        "中繼路由",
+        "SMTP 認證",
+        "預設寄送主機",
+        "閘道架構",
+        "DKIM 簽章"
+      ],
+      "main_category": "架構功能",
+      "sub_category": "閘道架構"
+    },
+    {
+      "keywords": [
+        "帳號列表",
+        "新增使用者",
+        "變更使用者",
+        "委派帳號"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號列表"
+    },
+    {
+      "keywords": [
+        "帳號環境",
+        "偏好設定權限",
+        "檢視權限"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號環境"
+    },
+    {
+      "keywords": [
+        "密碼原則",
+        "帳號保護",
+        "密碼複雜度",
+        "帳號鎖定"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號原則設定"
+    },
+    {
+      "keywords": [
+        "管理者帳號",
+        "指派管理者",
+        "管理權限"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "管理者帳號"
+    },
+    {
+      "keywords": [
+        "帳號認證",
+        "本機認證",
+        "LDAP",
+        "POP3",
+        "IMAP"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號認證"
+    },
+    {
+      "keywords": [
+        "帳號同步",
+        "同步設定",
+        "同步來源"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號同步"
+    },
+    {
+      "keywords": [
+        "群組管理",
+        "新增群組",
+        "編輯群組",
+        "群組成員"
+      ],
+      "main_category": "群組功能",
+      "sub_category": "群組管理"
+    },
+    {
+      "keywords": [
+        "郵件總管",
+        "過濾規則",
+        "專家模式",
+        "一般模式"
+      ],
+      "main_category": "郵件功能",
+      "sub_category": "郵件總管"
+    },
+    {
+      "keywords": [
+        "郵件查詢",
+        "查詢郵件",
+        "暫存檔案"
+      ],
+      "main_category": "郵件功能",
+      "sub_category": "郵件查詢"
+    },
+    {
+      "keywords": [
+        "連線封鎖",
+        "阻擋來源IP",
+        "封鎖網域"
+      ],
+      "main_category": "過濾功能",
+      "sub_category": "連線封鎖"
+    },
+    {
+      "keywords": [
+        "收件人有效性",
+        "無效收件人比例"
+      ],
+      "main_category": "過濾功能",
+      "sub_category": "收件人有效性"
+    },
+    {
+      "keywords": [
+        "來源檢查",
+        "RBL",
+        "SPF",
+        "DKIM",
+        "DMARC"
+      ],
+      "main_category": "過濾功能",
+      "sub_category": "來源檢查"
+    },
+    {
+      "keywords": [
+        "允許及封鎖名單",
+        "白名單",
+        "黑名單"
+      ],
+      "main_category": "過濾功能",
+      "sub_category": "允許及封鎖名單"
+    },
+    {
+      "keywords": [
+        "垃圾郵件特徵",
+        "攔截強度",
+        "URIBL",
+        "ASRC"
+      ],
+      "main_category": "過濾功能",
+      "sub_category": "垃圾郵件特徵"
+    },
+    {
+      "keywords": [
+        "資料特徵設定",
+        "機敏資料",
+        "個資"
+      ],
+      "main_category": "過濾功能",
+      "sub_category": "資料特徵設定"
+    },
+    {
+      "keywords": [
+        "垃圾郵件通知",
+        "通知信寄送週期"
+      ],
+      "main_category": "過濾功能",
+      "sub_category": "垃圾郵件通知"
+    },
+    {
+      "keywords": [
+        "郵件防毒",
+        "防毒引擎",
+        "中毒郵件"
+      ],
+      "main_category": "威脅功能",
+      "sub_category": "郵件防毒"
+    },
+    {
+      "keywords": [
+        "DoS 防禦",
+        "連線頻率",
+        "阻擋DoS攻擊"
+      ],
+      "main_category": "威脅功能",
+      "sub_category": "DoS 防禦"
+    },
+    {
+      "keywords": [
+        "威脅郵件特徵",
+        "釣魚網址",
+        "退信攻擊",
+        "ADM"
+      ],
+      "main_category": "威脅功能",
+      "sub_category": "威脅郵件特徵"
+    },
+    {
+      "keywords": [
+        "大量發信偵測",
+        "發信威脅"
+      ],
+      "main_category": "威脅功能",
+      "sub_category": "大量發信偵測"
+    },
+    {
+      "keywords": [
+        "報表精靈",
+        "報表紀錄",
+        "自訂樣板",
+        "折線圖",
+        "清單"
+      ],
+      "main_category": "報表功能",
+      "sub_category": "報表精靈"
+    }
   ],
   "郵件歸檔": [
-    { "keywords": ["登入", "登出", "切換帳號", "驗證失敗", "忘記密碼"], "main_category": "使用者介面", "sub_category": "登入與登出" },
-    { "keywords": ["收件匣", "寄件備份", "個人信匣", "郵件列表"], "main_category": "使用者介面", "sub_category": "郵件資料夾" },
-    { "keywords": ["搜尋郵件", "進階查詢", "查詢條件", "查詢結果"], "main_category": "使用者介面", "sub_category": "搜尋郵件" },
-    { "keywords": ["偏好設定", "時區", "佈景主題", "登入有效時間", "JavaScript控制項", "外部圖片"], "main_category": "使用者介面", "sub_category": "偏好設定" },
-    { "keywords": ["事件紀錄", "檢視事件紀錄", "帳號安全歷程"], "main_category": "使用者介面", "sub_category": "事件紀錄" },
-    { "keywords": ["參數設定", "系統環境", "資料保留", "SSL 憑證", "通知信", "郵件解析", "登入管制"], "main_category": "系統功能", "sub_category": "參數設定" },
-    { "keywords": ["紀錄檢視", "使用紀錄", "郵件查看紀錄", "查詢紀錄", "封存操作紀錄"], "main_category": "系統功能", "sub_category": "紀錄檢視" },
-    { "keywords": ["系統資訊", "主機名稱", "作業系統", "核心版本", "系統負載"], "main_category": "系統功能", "sub_category": "系統資訊" },
-    { "keywords": ["授權資訊", "授權碼", "授權到期日", "模組授權"], "main_category": "系統功能", "sub_category": "授權資訊" },
-    { "keywords": ["系統更新", "檢查更新", "下載更新檔", "安裝更新"], "main_category": "系統功能", "sub_category": "系統更新" },
-    { "keywords": ["特殊郵件", "索引錯誤", "郵件解析錯誤", "附件解析錯誤", "附件過大"], "main_category": "系統功能", "sub_category": "特殊郵件處理" },
-    { "keywords": ["新增網域", "變更網域", "刪除網域", "內部流向"], "main_category": "網域功能", "sub_category": "網域管理" },
-    { "keywords": ["網域別名", "新增別名", "刪除別名"], "main_category": "網域功能", "sub_category": "別名管理" },
-    { "keywords": ["歸檔架構", "匯入計畫", "前置過濾", "POP3", "IMAP", "EWS"], "main_category": "架構功能", "sub_category": "歸檔架構" },
-    { "keywords": ["外部索引", "外部資源", "SMB", "NFSv4"], "main_category": "架構功能", "sub_category": "外部索引" },
-    { "keywords": ["帳號列表", "新增使用者", "變更使用者", "委派帳號"], "main_category": "帳號功能", "sub_category": "帳號列表" },
-    { "keywords": ["帳號環境", "偏好設定權限", "檢視權限"], "main_category": "帳號功能", "sub_category": "帳號環境" },
-    { "keywords": ["密碼原則", "帳號保護", "密碼複雜度", "帳號鎖定"], "main_category": "帳號功能", "sub_category": "帳號原則設定" },
-    { "keywords": ["管理者帳號", "指派管理者", "管理權限"], "main_category": "帳號功能", "sub_category": "管理者帳號" },
-    { "keywords": ["帳號認證", "本機認證", "LDAP", "POP3", "IMAP"], "main_category": "帳號功能", "sub_category": "帳號認證" },
-    { "keywords": ["帳號同步", "同步設定", "同步來源"], "main_category": "帳號功能", "sub_category": "帳號同步" },
-    { "keywords": ["群組管理", "新增群組", "編輯群組", "群組成員"], "main_category": "群組功能", "sub_category": "群組管理" },
-    { "keywords": ["郵件查詢", "查詢郵件"], "main_category": "郵件功能", "sub_category": "郵件查詢" },
-    { "keywords": ["暫存檔案", "下載郵件", "封裝進度"], "main_category": "郵件功能", "sub_category": "暫存檔案" },
-    { "keywords": ["郵件審查", "審查任務", "審查標籤", "審查人員", "後稽核"], "main_category": "郵件功能", "sub_category": "郵件審查" },
-    { "keywords": ["週期設定", "儲存資源", "生命週期政策"], "main_category": "封存功能", "sub_category": "週期設定" },
-    { "keywords": ["封存紀錄", "查看封存紀錄"], "main_category": "封存功能", "sub_category": "封存紀錄" },
-    { "keywords": ["報表精靈", "報表紀錄", "自訂樣板", "折線圖", "清單"], "main_category": "報表功能", "sub_category": "報表精靈" },
-    { "keywords": ["功能組合", "交互影響", "整合測試"], "main_category": "進階測試", "sub_category": "功能組合與整合" },
-    { "keywords": ["強健性", "安全性", "邊界測試", "負向測試"], "main_category": "進階測試", "sub_category": "強健性與安全" },
-    { "keywords": ["API", "相容性測試", "系統整合"], "main_category": "進階測試", "sub_category": "API與整合" },
-    { "keywords": ["系統維運", "擴展測試", "進階參數"], "main_category": "進階測試", "sub_category": "維運與擴展" }
+    {
+      "keywords": [
+        "登入",
+        "登出",
+        "切換帳號",
+        "驗證失敗",
+        "忘記密碼"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "登入與登出"
+    },
+    {
+      "keywords": [
+        "收件匣",
+        "寄件備份",
+        "個人信匣",
+        "郵件列表"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "郵件資料夾"
+    },
+    {
+      "keywords": [
+        "搜尋郵件",
+        "進階查詢",
+        "查詢條件",
+        "查詢結果"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "搜尋郵件"
+    },
+    {
+      "keywords": [
+        "偏好設定",
+        "時區",
+        "佈景主題",
+        "登入有效時間",
+        "JavaScript控制項",
+        "外部圖片"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "偏好設定"
+    },
+    {
+      "keywords": [
+        "事件紀錄",
+        "檢視事件紀錄",
+        "帳號安全歷程"
+      ],
+      "main_category": "使用者介面",
+      "sub_category": "事件紀錄"
+    },
+    {
+      "keywords": [
+        "參數設定",
+        "系統環境",
+        "資料保留",
+        "SSL 憑證",
+        "通知信",
+        "郵件解析",
+        "登入管制"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "參數設定"
+    },
+    {
+      "keywords": [
+        "紀錄檢視",
+        "使用紀錄",
+        "郵件查看紀錄",
+        "查詢紀錄",
+        "封存操作紀錄"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "紀錄檢視"
+    },
+    {
+      "keywords": [
+        "系統資訊",
+        "主機名稱",
+        "作業系統",
+        "核心版本",
+        "系統負載"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "系統資訊"
+    },
+    {
+      "keywords": [
+        "授權資訊",
+        "授權碼",
+        "授權到期日",
+        "模組授權"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "授權資訊"
+    },
+    {
+      "keywords": [
+        "系統更新",
+        "檢查更新",
+        "下載更新檔",
+        "安裝更新"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "系統更新"
+    },
+    {
+      "keywords": [
+        "特殊郵件",
+        "索引錯誤",
+        "郵件解析錯誤",
+        "附件解析錯誤",
+        "附件過大"
+      ],
+      "main_category": "系統功能",
+      "sub_category": "特殊郵件處理"
+    },
+    {
+      "keywords": [
+        "新增網域",
+        "變更網域",
+        "刪除網域",
+        "內部流向"
+      ],
+      "main_category": "網域功能",
+      "sub_category": "網域管理"
+    },
+    {
+      "keywords": [
+        "網域別名",
+        "新增別名",
+        "刪除別名"
+      ],
+      "main_category": "網域功能",
+      "sub_category": "別名管理"
+    },
+    {
+      "keywords": [
+        "歸檔架構",
+        "匯入計畫",
+        "前置過濾",
+        "POP3",
+        "IMAP",
+        "EWS"
+      ],
+      "main_category": "架構功能",
+      "sub_category": "歸檔架構"
+    },
+    {
+      "keywords": [
+        "外部索引",
+        "外部資源",
+        "SMB",
+        "NFSv4"
+      ],
+      "main_category": "架構功能",
+      "sub_category": "外部索引"
+    },
+    {
+      "keywords": [
+        "帳號列表",
+        "新增使用者",
+        "變更使用者",
+        "委派帳號"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號列表"
+    },
+    {
+      "keywords": [
+        "帳號環境",
+        "偏好設定權限",
+        "檢視權限"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號環境"
+    },
+    {
+      "keywords": [
+        "密碼原則",
+        "帳號保護",
+        "密碼複雜度",
+        "帳號鎖定"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號原則設定"
+    },
+    {
+      "keywords": [
+        "管理者帳號",
+        "指派管理者",
+        "管理權限"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "管理者帳號"
+    },
+    {
+      "keywords": [
+        "帳號認證",
+        "本機認證",
+        "LDAP",
+        "POP3",
+        "IMAP"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號認證"
+    },
+    {
+      "keywords": [
+        "帳號同步",
+        "同步設定",
+        "同步來源"
+      ],
+      "main_category": "帳號功能",
+      "sub_category": "帳號同步"
+    },
+    {
+      "keywords": [
+        "群組管理",
+        "新增群組",
+        "編輯群組",
+        "群組成員"
+      ],
+      "main_category": "群組功能",
+      "sub_category": "群組管理"
+    },
+    {
+      "keywords": [
+        "郵件查詢",
+        "查詢郵件"
+      ],
+      "main_category": "郵件功能",
+      "sub_category": "郵件查詢"
+    },
+    {
+      "keywords": [
+        "暫存檔案",
+        "下載郵件",
+        "封裝進度"
+      ],
+      "main_category": "郵件功能",
+      "sub_category": "暫存檔案"
+    },
+    {
+      "keywords": [
+        "郵件審查",
+        "審查任務",
+        "審查標籤",
+        "審查人員",
+        "後稽核"
+      ],
+      "main_category": "郵件功能",
+      "sub_category": "郵件審查"
+    },
+    {
+      "keywords": [
+        "週期設定",
+        "儲存資源",
+        "生命週期政策"
+      ],
+      "main_category": "封存功能",
+      "sub_category": "週期設定"
+    },
+    {
+      "keywords": [
+        "封存紀錄",
+        "查看封存紀錄"
+      ],
+      "main_category": "封存功能",
+      "sub_category": "封存紀錄"
+    },
+    {
+      "keywords": [
+        "報表精靈",
+        "報表紀錄",
+        "自訂樣板",
+        "折線圖",
+        "清單"
+      ],
+      "main_category": "報表功能",
+      "sub_category": "報表精靈"
+    },
+    {
+      "keywords": [
+        "功能組合",
+        "交互影響",
+        "整合測試"
+      ],
+      "main_category": "進階測試",
+      "sub_category": "功能組合與整合"
+    },
+    {
+      "keywords": [
+        "強健性",
+        "安全性",
+        "邊界測試",
+        "負向測試"
+      ],
+      "main_category": "進階測試",
+      "sub_category": "強健性與安全"
+    },
+    {
+      "keywords": [
+        "API",
+        "相容性測試",
+        "系統整合"
+      ],
+      "main_category": "進階測試",
+      "sub_category": "API與整合"
+    },
+    {
+      "keywords": [
+        "系統維運",
+        "擴展測試",
+        "進階參數"
+      ],
+      "main_category": "進階測試",
+      "sub_category": "維運與擴展"
+    }
+  ],
+  "Smail-Spec": [
+    "帳號",
+    "認證",
+    "同步",
+    "群組",
+    "網域",
+    "別名",
+    "郵件總管",
+    "郵件查詢",
+    "專家模式",
+    "過濾",
+    "允許",
+    "封鎖",
+    "名單",
+    "來源檢查",
+    "垃圾郵件",
+    "威脅",
+    "DoS",
+    "防毒",
+    "病毒",
+    "系統",
+    "參數",
+    "紀錄",
+    "更新",
+    "HA",
+    "報表",
+    "介面",
+    "登入",
+    "登出",
+    "搜尋",
+    "資料夾",
+    "偏好設定",
+    "架構"
+  ],
+  "Smail-Tests": [
+    "帳號",
+    "認證",
+    "同步",
+    "群組",
+    "網域",
+    "別名",
+    "郵件總管",
+    "郵件查詢",
+    "專家模式",
+    "過濾",
+    "允許",
+    "封鎖",
+    "名單",
+    "來源檢查",
+    "垃圾郵件",
+    "威脅",
+    "DoS",
+    "防毒",
+    "病毒",
+    "系統",
+    "參數",
+    "紀錄",
+    "更新",
+    "HA",
+    "報表",
+    "介面",
+    "登入",
+    "登出",
+    "搜尋",
+    "資料夾",
+    "偏好設定",
+    "架構"
   ]
 }
