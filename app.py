@@ -4,14 +4,16 @@ import pandas as pd
 import io
 import re
 from types import SimpleNamespace
-from urllib.parse import quote 
-from flask import (Flask, render_template, request, redirect, url_for, 
+from urllib.parse import quote
+from flask import (Flask, render_template, request, redirect, url_for,
                    flash, Response, send_from_directory)
 from sqlalchemy import func, or_
 from werkzeug.utils import secure_filename
 import uuid
+# --- ▼▼▼【核心修改】從 markupsafe 匯入 escape 函式 ▼▼▼ ---
+from markupsafe import escape
 
-from extensions import db, migrate 
+from extensions import db, migrate
 from models import TestCase, Tag, Attachment
 from services import process_excel_file
 from utils import categorize_case, process_tags, load_category_rules, update_global_preconditions
@@ -19,7 +21,7 @@ from utils import categorize_case, process_tags, load_category_rules, update_glo
 # --- 初始化與設定 (保持不變) ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-ATTACHMENT_FOLDER = os.path.join(UPLOAD_FOLDER, 'attachments') 
+ATTACHMENT_FOLDER = os.path.join(UPLOAD_FOLDER, 'attachments')
 ALLOWED_EXTENSIONS = {'xlsx'}
 
 app = Flask(__name__)
@@ -30,7 +32,7 @@ if not os.path.exists(os.path.dirname(db_path)):
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['ATTACHMENT_FOLDER'] = ATTACHMENT_FOLDER 
+app.config['ATTACHMENT_FOLDER'] = ATTACHMENT_FOLDER
 
 db.init_app(app)
 migrate.init_app(app, db)
@@ -54,7 +56,7 @@ def dashboard():
         TestCase.status,
         func.count(TestCase.status)
     ).group_by(TestCase.status).all()
-    
+
     pie_chart_data = {
         'labels': [status[0] for status in status_distribution],
         'data': [status[1] for status in status_distribution]
@@ -63,7 +65,7 @@ def dashboard():
     main_categories = db.session.query(
         TestCase.main_category
     ).group_by(TestCase.main_category).order_by(TestCase.main_category).all()
-    
+
     progress_data = []
     for category_tuple in main_categories:
         category_name = category_tuple[0]
@@ -113,7 +115,7 @@ def index():
         per_page = 50
 
     query_string = request.args.get('q', '').strip()
-    
+
     search_terms = []
     selected_statuses = []
     selected_tags = []
@@ -149,7 +151,7 @@ def index():
 
     if selected_statuses:
         query = query.filter(TestCase.status.in_(selected_statuses))
-    
+
     if selected_tags:
         for tag_name in selected_tags:
             query = query.filter(TestCase.tags.any(name=tag_name))
@@ -174,14 +176,14 @@ def index():
             tree_data[prod] = {}
         if main_cat:
             if main_cat not in tree_data[prod]:
-                tree_data[prod][main_cat] = [] 
+                tree_data[prod][main_cat] = []
             if sub_cat and sub_cat not in tree_data[prod][main_cat]:
                 tree_data[prod][main_cat].append(sub_cat)
-    
+
     global_precondition = None
     CATEGORY_RULES = load_category_rules()
     global_preconditions = CATEGORY_RULES.get('global_preconditions', {})
-    
+
     if selected_sub_category:
         global_precondition = global_preconditions.get(selected_sub_category)
     if not global_precondition and selected_main_category:
@@ -191,14 +193,14 @@ def index():
 
     pagination = query.order_by(TestCase.case_id).paginate(page=page, per_page=per_page, error_out=False)
     cases_to_display = pagination.items
-    
+
     all_tags = Tag.query.order_by(Tag.name).all()
 
-    return render_template('cases.html', 
-                           cases=cases_to_display, 
+    return render_template('cases.html',
+                           cases=cases_to_display,
                            tree_data=tree_data,
                            pagination=pagination,
-                           selected_product=selected_product, 
+                           selected_product=selected_product,
                            selected_main_category=selected_main_category,
                            selected_sub_category=selected_sub_category,
                            global_precondition=global_precondition,
@@ -208,16 +210,13 @@ def index():
                            selected_statuses=selected_statuses,
                            query_string=query_string)
 
-# --- ▼▼▼ 核心修改處：重寫 delete_tag 路由 ▼▼▼ ---
+
 @app.route('/delete-tag')
 def delete_tag():
-    # 從查詢參數中獲取 case_id 和 tag_name
     case_id = request.args.get('case_id', type=int)
     tag_name = request.args.get('tag_name')
 
-    # 複製一份原始的查詢參數，用於稍後的重新導向
     redirect_args = request.args.to_dict()
-    # 從中移除我們這次操作用的參數
     redirect_args.pop('case_id', None)
     redirect_args.pop('tag_name', None)
 
@@ -233,19 +232,17 @@ def delete_tag():
             flash(f"找不到要刪除的標籤 '{tag_name}'", 'warning')
     else:
         flash("刪除標籤時缺少必要參數。", 'danger')
-    
-    # 重新導向回主頁面，並帶上所有原本的篩選/分頁參數
-    return redirect(url_for('index', **redirect_args))
-# --- ▲▲▲ 修改結束 ▲▲▲ ---
 
-# ... (其他所有路由 add, edit, bulk_actions 等都保持不變) ...
+    return redirect(url_for('index', **redirect_args))
+
+
 @app.route('/add', methods=['GET', 'POST'])
 def add_case():
     if request.method == 'POST':
         case_data = request.form.to_dict()
         product_type = case_data.get('product_type', '未分類產品')
         main_cat, sub_cat = categorize_case(case_data, product_type)
-        
+
         new_case = TestCase(
             product_type=case_data.get('product_type', '未分類產品'),
             category=case_data.get('category', ''),
@@ -272,7 +269,7 @@ def edit_case(id):
         case_data = request.form.to_dict()
         product_type = case_data.get('product_type')
         main_cat, sub_cat = categorize_case(case_data, product_type)
-        
+
         case_to_edit.product_type = case_data.get('product_type')
         case_to_edit.category = case_data.get('category')
         case_to_edit.main_category = main_cat
@@ -287,7 +284,7 @@ def edit_case(id):
         case_to_edit.status = case_data.get('status')
         case_to_edit.notes = case_data.get('notes')
         case_to_edit.reference = case_data.get('reference')
-        
+
         tags_string = case_data.get('tags', '')
         case_to_edit.tags = process_tags(tags_string)
 
@@ -324,7 +321,7 @@ def bulk_add_tag():
     new_tag_name = request.form.get('new_tag', '').strip().lower()
 
     redirect_params = {k: v for k, v in request.form.items() if k not in ['case_ids', 'new_tag']}
-    
+
     if not case_ids or not new_tag_name:
         flash('未選擇任何案例或未輸入標籤。', 'warning')
         return redirect(url_for('index', **redirect_params))
@@ -338,7 +335,7 @@ def bulk_add_tag():
     for case in cases_to_update:
         if tag_to_add not in case.tags:
             case.tags.append(tag_to_add)
-            
+
     db.session.commit()
     flash(f'已為 {len(case_ids)} 個案例成功新增標籤 "{new_tag_name}"！', 'success')
     return redirect(url_for('index', **redirect_params))
@@ -353,7 +350,7 @@ def bulk_delete():
         return redirect(url_for('index', **redirect_params))
 
     cases_to_delete = TestCase.query.filter(TestCase.id.in_(case_ids)).all()
-    
+
     for case in cases_to_delete:
         for attachment in case.attachments:
             try:
@@ -361,9 +358,9 @@ def bulk_delete():
             except OSError as e:
                 print(f"Error deleting file {attachment.filepath}: {e}")
         db.session.delete(case)
-        
+
     db.session.commit()
-    
+
     flash(f'已成功刪除 {len(cases_to_delete)} 個案例！', 'success')
     return redirect(url_for('index', **redirect_params))
 
@@ -372,7 +369,7 @@ def edit_notes(id):
     case = TestCase.query.get_or_404(id)
     if request.method == 'POST':
         case.notes = request.form.get('notes', '')
-        
+
         if 'attachment' in request.files:
             file = request.files['attachment']
             if file and file.filename != '':
@@ -380,7 +377,7 @@ def edit_notes(id):
                 unique_filename = f"{uuid.uuid4().hex}_{original_filename}"
                 file_path = os.path.join(app.config['ATTACHMENT_FOLDER'], unique_filename)
                 file.save(file_path)
-                
+
                 new_attachment = Attachment(
                     filename=original_filename,
                     filepath=unique_filename,
@@ -413,7 +410,7 @@ def download_attachment(filename):
 def delete_attachment(attachment_id):
     attachment = Attachment.query.get_or_404(attachment_id)
     case_id = attachment.test_case_id
-    
+
     try:
         os.remove(os.path.join(app.config['ATTACHMENT_FOLDER'], attachment.filepath))
     except OSError as e:
@@ -432,16 +429,21 @@ def get_case_details(id):
     case = TestCase.query.get_or_404(id)
     return render_template('partials/_case_details_content.html', case=case)
 
+# --- ▼▼▼【核心修改】重寫 utility_processor 確保內容安全 ▼▼▼ ---
 @app.context_processor
 def utility_processor():
     def render_manual_list_in_template(text_block):
+        # 將輸入的文字塊分割成行，並移除空行
         lines = [line.strip().lstrip('0123456789. ') for line in (text_block or "").split('\n') if line.strip()]
         html = '<div class="manual-list">'
         for i, line in enumerate(lines):
-            html += f'<div class="manual-list-item"><span class="manual-list-number">{i+1}.</span><span class="manual-list-text">{line}</span></div>'
+            # 使用 escape() 函式對每一行的內容進行HTML跳脫，防止XSS攻擊
+            safe_line = escape(line)
+            html += f'<div class="manual-list-item"><span class="manual-list-number">{i+1}.</span><span class="manual-list-text">{safe_line}</span></div>'
         html += '</div>'
         return html
     return dict(render_manual_list=render_manual_list_in_template)
+# --- ▲▲▲ 修改結束 ▲▲▲ ---
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_page():
@@ -450,7 +452,7 @@ def upload_page():
         if not selected_product_type:
             flash('請務必選擇要匯入的產品類型！', 'danger')
             return redirect(request.url)
-            
+
         uploaded_files = request.files.getlist('files')
         if not uploaded_files or uploaded_files[0].filename == '':
             flash('未選擇任何檔案', 'warning')
@@ -469,7 +471,7 @@ def upload_page():
                     has_error = True
                     flash(f'處理檔案 "{filename}" 時發生錯誤：{e}', 'danger')
                     db.session.rollback()
-                    break 
+                    break
 
         if not has_error and total_imported_count > 0:
              flash(f'所有檔案處理完畢！共成功匯入 {total_imported_count} 筆新案例到 "{selected_product_type}" 分類中！', 'success')
@@ -490,7 +492,7 @@ def export_cases():
     main_category = request.args.get('main_category')
     sub_category = request.args.get('sub_category')
     query_string = request.args.get('q', '').strip()
-    
+
     search_terms = []
     selected_statuses = []
     selected_tags = []
@@ -566,7 +568,7 @@ def export_cases():
         filename = f"{main_category.replace('功能', '')}.xlsx"
     elif product:
         filename = f"{product}.xlsx"
-    
+
     return Response(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

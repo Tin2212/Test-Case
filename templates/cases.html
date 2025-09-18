@@ -30,30 +30,21 @@
                     </a>
                     <ul class="sub-menu">
                         {% for main_group, sub_groups in main_categories.items()|sort %}
-                            {% if sub_groups %}
-                                <li class="parent {% if product == selected_product and main_group == selected_main_category %}active open{% endif %}">
-                                    <a href="{{ url_for('index', product=product, main_category=main_group) }}">
-                                        {{ main_group.replace('功能', '') }}
-                                    </a>
-                                    <ul class="sub-menu">
-                                        {% for sub in sub_groups|sort %}
-                                            <li>
-                                                <a href="{{ url_for('index', product=product, main_category=main_group, sub_category=sub) }}"
-                                                   class="{{ 'active-filter' if product == selected_product and main_group == selected_main_category and sub == selected_sub_category }}">
-                                                     {{ sub }}
-                                                </a>
-                                            </li>
-                                        {% endfor %}
-                                    </ul>
-                                </li>
-                            {% else %}
-                                <li>
-                                    <a href="{{ url_for('index', product=product, main_category=main_group) }}"
-                                       class="{{ 'active-filter' if product == selected_product and main_group == selected_main_category }}">
-                                        {{ main_group }}
-                                    </a>
-                                </li>
-                            {% endif %}
+                             <li class="parent {% if product == selected_product and main_group == selected_main_category %}active open{% endif %}">
+                                <a href="{{ url_for('index', product=product, main_category=main_group) }}">
+                                    {{ main_group.replace('功能', '') }}
+                                </a>
+                                <ul class="sub-menu">
+                                    {% for sub in sub_groups|sort %}
+                                        <li>
+                                            <a href="{{ url_for('index', product=product, main_category=main_group, sub_category=sub) }}"
+                                               class="{{ 'active-filter' if product == selected_product and main_group == selected_main_category and sub == selected_sub_category }}">
+                                                 {{ sub }}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
                         {% endfor %}
                     </ul>
                 </li>
@@ -197,17 +188,7 @@
                                 {{ case.case_id }}
                                 <div class="tag-list mt-1">
                                     {% for tag in case.tags|sort(attribute='name') %}
-                                        {% set query_params = {
-                                            'case_id': case.id,
-                                            'tag_name': tag.name,
-                                            'q': query_string, 
-                                            'per_page': per_page, 
-                                            'page': pagination.page,
-                                            'product': selected_product, 
-                                            'main_category': selected_main_category, 
-                                            'sub_category': selected_sub_category
-                                        } %}
-                                        <a href="{{ url_for('delete_tag') }}?{{ query_params|urlencode }}"
+                                        <a href="{{ url_for('delete_tag', case_id=case.id, tag_name=tag.name, q=query_string, per_page=per_page, page=pagination.page, product=selected_product, main_category=selected_main_category, sub_category=selected_sub_category) }}"
                                            class="badge bg-secondary text-decoration-none me-1 tag-item"
                                            title="點擊以刪除標籤"
                                            onclick="return confirm('您確定要刪除標籤 \'{{ tag.name }}\' 嗎？');">
@@ -304,163 +285,210 @@
     {% endif %}
     
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // ... (其他 JavaScript 保持不變) ...
-        const tableBody = document.getElementById('case-table-body');
-        if (tableBody) {
-            tableBody.addEventListener('click', function(e) {
-                const interactiveElement = e.target.closest(
-                    'a, button, input, select, .dropdown, .case-checkbox'
-                );
-                if (interactiveElement) {
-                    return;
-                }
-                const expandableRow = e.target.closest('.expandable-row');
-                if (expandableRow) {
-                    const targetId = expandableRow.dataset.bsTarget;
-                    const collapseElement = document.querySelector(targetId);
-                    if (collapseElement) {
-                        const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
-                        bsCollapse.toggle();
-                        
-                        const detailsContent = document.querySelector(targetId + ' > td');
-                        if (!detailsContent.hasAttribute('data-loaded')) {
-                            const caseId = expandableRow.dataset.caseId;
-                            const detailUrl = "{{ url_for('get_case_details', id=0) }}".replace('0', caseId);
-                            
-                            htmx.ajax('GET', detailUrl, {target: detailsContent, swap: 'innerHTML'}).then(() => {
-                                detailsContent.setAttribute('data-loaded', 'true');
-                            });
-                        }
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Helper function to introduce a small delay ---
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // --- Single row expansion/collapse logic ---
+    const tableBody = document.getElementById('case-table-body');
+    if (tableBody) {
+        tableBody.addEventListener('click', function(e) {
+            const interactiveElement = e.target.closest(
+                'a, button, input, select, textarea, .dropdown, .case-checkbox, .tag-item, .editable-section'
+            );
+            if (interactiveElement) {
+                return;
+            }
+
+            const expandableRow = e.target.closest('.expandable-row');
+            if (expandableRow) {
+                const targetId = expandableRow.dataset.bsTarget;
+                const collapseElement = document.querySelector(targetId);
+
+                if (collapseElement) {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
+                    bsCollapse.toggle();
+
+                    const detailsContent = document.querySelector(targetId + ' > td');
+                    if (!detailsContent.hasAttribute('data-loaded')) {
+                        const caseId = expandableRow.dataset.caseId;
+                        const detailUrl = "{{ url_for('get_case_details', id=0) }}".replace('0', caseId);
+
+                        htmx.ajax('GET', detailUrl, { target: detailsContent, swap: 'innerHTML' }).then(() => {
+                            detailsContent.setAttribute('data-loaded', 'true');
+                        });
                     }
                 }
-            });
-        }
-
-        $('#smart-search-select').select2({
-            theme: 'bootstrap-5',
-            tags: true, 
-            placeholder: '輸入條件後按 Enter 或空白鍵建立區塊...',
-            tokenSeparators: [' ', ',']
+            }
         });
-        const searchBtn = document.getElementById('smart-search-btn');
-        if (searchBtn) {
-            const performSearch = function() {
-                const selectedData = $('#smart-search-select').val();
-                const queryString = selectedData ? selectedData.join(' ') : '';
-                const currentUrl = new URL(window.location.href);
-                if (queryString) {
-                    currentUrl.searchParams.set('q', queryString);
-                } else {
-                    currentUrl.searchParams.delete('q');
-                }
-                currentUrl.searchParams.set('page', '1');
-                window.location.href = currentUrl.href;
-            };
-            searchBtn.addEventListener('click', performSearch);
-            $('#smart-search-select').next('.select2-container').on('keyup', function(event) {
-                if (event.key === 'Enter') {
-                    setTimeout(performSearch, 50);
-                }
-            });
-        }
-        $('#bulk-tag-select').select2({ theme: 'bootstrap-5', placeholder: '選擇或輸入新標籤...', tags: true, tokenSeparators: [',', ' ']});
-        const bulkForm = document.getElementById('bulk-action-form');
-        const addTagBtn = document.getElementById('bulk-add-tag-btn');
-        const deleteBtn = document.getElementById('bulk-delete-btn');
-        if (bulkForm && addTagBtn && deleteBtn) {
-            addTagBtn.addEventListener('click', function() {
-                const tagValue = $('#bulk-tag-select').val(); 
-                if (!tagValue) { alert('請選擇或輸入要新增的標籤！'); return; }
-                let hiddenInput = bulkForm.querySelector('input[name="new_tag"]');
-                if (!hiddenInput) { hiddenInput = document.createElement('input'); hiddenInput.type = 'hidden'; hiddenInput.name = 'new_tag'; bulkForm.appendChild(hiddenInput); }
-                hiddenInput.value = tagValue;
-                bulkForm.action = "{{ url_for('bulk_add_tag') }}";
-                bulkForm.submit();
-            });
-            deleteBtn.addEventListener('click', function() {
-                const checkedBoxes = bulkForm.querySelectorAll('input[name="case_ids"]:checked');
-                if (checkedBoxes.length === 0) { alert('請至少選擇一個要刪除的案例！'); return; }
-                if (confirm('您確定要刪除所選的 ' + checkedBoxes.length + ' 個案例嗎？此操作無法復原。')) {
-                    bulkForm.action = "{{ url_for('bulk_delete') }}";
-                    bulkForm.submit();
-                }
-            });
-        }
-        const perPageSelect = document.getElementById('per-page-select');
-        if (perPageSelect) {
-            perPageSelect.addEventListener('change', function() {
-                const perPage = this.value;
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('per_page', perPage);
-                currentUrl.searchParams.set('page', '1');
-                window.location.href = currentUrl.href;
-            });
-        }
-        const selectAllCheckbox = document.getElementById('select-all-checkbox');
-        if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('click', function(event) {
-                document.querySelectorAll('.case-checkbox').forEach(function(checkbox) {
-                    checkbox.checked = event.target.checked;
-                });
-            });
-        }
-        
-        // --- ▼▼▼ 核心修改處 4：重構「全部展開/收合」的 JavaScript ▼▼▼ ---
-        const toggleAllBtn = document.getElementById('toggle-all-btn');
-        if (toggleAllBtn) {
-            toggleAllBtn.addEventListener('click', function() {
-                const isCollapsed = this.dataset.state === 'collapsed';
-                const action = isCollapsed ? 'show' : 'hide';
-                const expandableRows = document.querySelectorAll('.expandable-row');
+    }
 
-                expandableRows.forEach(row => {
+    // --- Smart search logic ---
+    $('#smart-search-select').select2({
+        theme: 'bootstrap-5',
+        tags: true,
+        placeholder: '輸入條件後按 Enter 或空白鍵建立區塊...',
+        tokenSeparators: [' ', ',']
+    });
+    const searchBtn = document.getElementById('smart-search-btn');
+    if (searchBtn) {
+        const performSearch = function() {
+            const selectedData = $('#smart-search-select').val();
+            const queryString = selectedData ? selectedData.join(' ') : '';
+            const currentUrl = new URL(window.location.href);
+            if (queryString) {
+                currentUrl.searchParams.set('q', queryString);
+            } else {
+                currentUrl.searchParams.delete('q');
+            }
+            currentUrl.searchParams.set('page', '1'); // Reset to first page on new search
+            window.location.href = currentUrl.href;
+        };
+        searchBtn.addEventListener('click', performSearch);
+        $('#smart-search-select').next('.select2-container').on('keyup', function(event) {
+            if (event.key === 'Enter') {
+                setTimeout(performSearch, 50);
+            }
+        });
+    }
+
+    // --- Bulk actions logic (Tags & Delete) ---
+    // ▼▼▼ 核心修改處：移除 tokenSeparators 中的空格 ▼▼▼
+    $('#bulk-tag-select').select2({ 
+        theme: 'bootstrap-5', 
+        placeholder: '選擇或輸入新標籤...', 
+        tags: true, 
+        tokenSeparators: [','] 
+    });
+    // ▲▲▲ 修改結束 ▲▲▲
+    const bulkForm = document.getElementById('bulk-action-form');
+    const addTagBtn = document.getElementById('bulk-add-tag-btn');
+    const deleteBtn = document.getElementById('bulk-delete-btn');
+    if (bulkForm && addTagBtn && deleteBtn) {
+        addTagBtn.addEventListener('click', function() {
+            const tagValue = $('#bulk-tag-select').val();
+            if (!tagValue) { alert('請選擇或輸入要新增的標籤！'); return; }
+            let hiddenInput = bulkForm.querySelector('input[name="new_tag"]');
+            if (!hiddenInput) {
+                hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'new_tag';
+                bulkForm.appendChild(hiddenInput);
+            }
+            hiddenInput.value = tagValue;
+            bulkForm.action = "{{ url_for('bulk_add_tag') }}";
+            bulkForm.submit();
+        });
+
+        deleteBtn.addEventListener('click', function() {
+            const checkedBoxes = bulkForm.querySelectorAll('input[name="case_ids"]:checked');
+            if (checkedBoxes.length === 0) {
+                alert('請至少選擇一個要刪除的案例！');
+                return;
+            }
+            if (confirm('您確定要刪除所選的 ' + checkedBoxes.length + ' 個案例嗎？此操作無法復原。')) {
+                bulkForm.action = "{{ url_for('bulk_delete') }}";
+                bulkForm.submit();
+            }
+        });
+    }
+
+    // --- Per page selection logic ---
+    const perPageSelect = document.getElementById('per-page-select');
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', function() {
+            const perPage = this.value;
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('per_page', perPage);
+            currentUrl.searchParams.set('page', '1'); // Reset to first page
+            window.location.href = currentUrl.href;
+        });
+    }
+
+    // --- Select all checkbox logic ---
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('click', function(event) {
+            document.querySelectorAll('.case-checkbox').forEach(function(checkbox) {
+                checkbox.checked = event.target.checked;
+            });
+        });
+    }
+
+    // --- "Toggle All" expand/collapse logic ---
+    const toggleAllBtn = document.getElementById('toggle-all-btn');
+    if (toggleAllBtn) {
+        // Use an async function to allow for 'await'
+        toggleAllBtn.addEventListener('click', async function() {
+            const button = this;
+            const isCollapsed = button.dataset.state === 'collapsed';
+            const action = isCollapsed ? 'show' : 'hide';
+            const expandableRows = document.querySelectorAll('.expandable-row');
+
+            button.disabled = true;
+            const originalText = button.querySelector('span').textContent;
+            button.querySelector('span').textContent = '處理中...';
+
+            if (action === 'show') {
+                for (const row of expandableRows) {
                     const targetId = row.dataset.bsTarget;
                     const collapseElement = document.querySelector(targetId);
                     const detailsContent = document.querySelector(targetId + ' > td');
-                    
+
+                    if (collapseElement && detailsContent) {
+                        if (!detailsContent.hasAttribute('data-loaded')) {
+                            const caseId = row.dataset.caseId;
+                            const detailUrl = "{{ url_for('get_case_details', id=0) }}".replace('0', caseId);
+                            await htmx.ajax('GET', detailUrl, { target: detailsContent, swap: 'innerHTML' });
+                            detailsContent.setAttribute('data-loaded', 'true');
+                        }
+                        const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
+                        bsCollapse.show();
+                        await sleep(20);
+                    }
+                }
+            } else { // action === 'hide'
+                for (const row of expandableRows) {
+                    const targetId = row.dataset.bsTarget;
+                    const collapseElement = document.querySelector(targetId);
                     if (collapseElement) {
                         const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
-                        
-                        if (action === 'show') {
-                            if (!detailsContent.hasAttribute('data-loaded')) {
-                                const caseId = row.dataset.caseId;
-                                const detailUrl = "{{ url_for('get_case_details', id=0) }}".replace('0', caseId);
-                                htmx.ajax('GET', detailUrl, {target: detailsContent, swap: 'innerHTML'}).then(() => {
-                                    detailsContent.setAttribute('data-loaded', 'true');
-                                });
-                            }
-                            bsCollapse.show();
-                        } else {
-                            bsCollapse.hide();
-                        }
+                        bsCollapse.hide();
                     }
-                });
-
-                const icon = this.querySelector('i');
-                const text = this.querySelector('span');
-                this.dataset.state = isCollapsed ? 'expanded' : 'collapsed';
-                if (isCollapsed) {
-                    icon.classList.remove('bi-arrows-expand');
-                    icon.classList.add('bi-arrows-collapse');
-                    text.textContent = '全部收合';
-                } else {
-                    icon.classList.remove('bi-arrows-collapse');
-                    icon.classList.add('bi-arrows-expand');
-                    text.textContent = '全部展開';
                 }
-            });
-        }
-        
-        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
-        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
-          return new bootstrap.Popover(popoverTriggerEl)
-        })
+                await sleep(50);
+            }
+
+            // --- Update button state and re-enable it ---
+            const icon = button.querySelector('i');
+            const text = button.querySelector('span');
+            button.dataset.state = isCollapsed ? 'expanded' : 'collapsed';
+            
+            if (isCollapsed) {
+                icon.classList.remove('bi-arrows-expand');
+                icon.classList.add('bi-arrows-collapse');
+                text.textContent = '全部收合';
+            } else {
+                icon.classList.remove('bi-arrows-collapse');
+                icon.classList.add('bi-arrows-expand');
+                text.textContent = '全部展開';
+            }
+            button.disabled = false;
+        });
+    }
+
+    // --- Popover initialization ---
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+      return new bootstrap.Popover(popoverTriggerEl)
     });
-    </script>
+});
+</script>
 {% endblock %}
